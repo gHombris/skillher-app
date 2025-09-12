@@ -2,15 +2,14 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// Supondo que a imagem do time esteja em assets/team-photo.png
-const teamImage = require('../assets/team-photo.png'); 
-// Supondo que o logo esteja em assets/logo.png
-const logoImage = require('../assets/logo.png');
+
+const teamImage = require('./assets/team-photo.png'); 
+const logoImage = require('./assets/Skill.png');
 
 export default function WelcomeScreen({ navigation }) {
   return (
     <LinearGradient
-      colors={['#00FFC2', '#4D008C']} // Cores do gradiente
+      colors={['#16FFBB', '#6A0DAD']} // Cores do gradiente
       style={styles.container}
     >
       <View style={styles.content}>
@@ -39,7 +38,6 @@ export default function WelcomeScreen({ navigation }) {
   );
 }
 
-// Estilos (simplificados, podemos refinar com Tailwind ou similar depois)
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center' },
