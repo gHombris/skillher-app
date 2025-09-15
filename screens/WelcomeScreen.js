@@ -3,8 +3,8 @@ import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 
-const teamImage = require('./assets/team-photo.png'); 
-const logoImage = require('./assets/Skill.png');
+const teamImage = require('../assets/jogadoras-removebg.png'); 
+const logoImage = require('../assets/Skill.png');
 
 export default function WelcomeScreen({ navigation }) {
   return (

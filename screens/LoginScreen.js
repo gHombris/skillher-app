@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, TextInput, SafeAreaView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const logoImage = require('./assets/skill.png'); 
+const logoImage = require('../assets/Skill.png'); 
 export default function LoginScreen({ navigation }) {
   return (
     <LinearGradient
