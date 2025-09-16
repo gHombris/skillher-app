@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Button } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import YoutubeIframe from 'react-native-youtube-iframe';
+import { Video, ResizeMode } from 'expo-av';
 import XPFeedbackModal from '../components/XPFeedbackModal';
-
 
 const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -14,41 +12,26 @@ const formatTime = (seconds) => {
 
 export default function TrainingPlayerScreen({ route, navigation }) {
     const { exercise } = route.params;
-    const [playing, setPlaying] = useState(false);
-
-   
+    const videoRef = useRef(null); 
     const [seconds, setSeconds] = useState(0);
     const [isModalVisible, setModalVisible] = useState(false);
     const intervalRef = useRef(null);
 
-  
     useEffect(() => {
-       
         intervalRef.current = setInterval(() => {
             setSeconds(prevSeconds => prevSeconds + 1);
         }, 1000);
-
-        
-        return () => {
-            clearInterval(intervalRef.current);
-        };
+        return () => clearInterval(intervalRef.current);
     }, []);
 
-    const onStateChange = useCallback((state) => {
-        if (state === "ended") {
-            setPlaying(false);
-        }
-    }, []);
-
-   
     const handleCompleteTraining = () => {
-        clearInterval(intervalRef.current); 
-        setModalVisible(true); 
+        clearInterval(intervalRef.current);
+        setModalVisible(true);
     };
 
     const handleCloseModal = () => {
         setModalVisible(false);
-        navigation.goBack(); 
+        navigation.goBack();
     };
 
     return (
@@ -64,28 +47,36 @@ export default function TrainingPlayerScreen({ route, navigation }) {
                     <Text style={styles.title}>{exercise.title}</Text>
                     <Text style={styles.difficulty}>{exercise.difficulty}</Text>
 
-                    <View style={styles.videoContainer}>
-                        <YoutubeIframe height={220} play={playing} videoId={exercise.videoId} onChangeState={onStateChange} />
-                    </View>
+                    {/* 2. SUBSTITUÍMOS O PLAYER DO YOUTUBE PELO PLAYER NATIVO */}
+                    <Video
+                        ref={videoRef}
+                        style={styles.video}
+                        source={exercise.videoPath} 
+                        useNativeControls
+                        resizeMode={ResizeMode.CONTAIN} 
+                        onPlaybackStatusUpdate={status => {
+                            if (status.didJustFinish) {
+                                
+                            }
+                        }}
+                    />
 
-                    {/* 5. EXIBIÇÃO DO CRONÔMETRO */}
                     <View style={styles.timerContainer}>
                         <Text style={styles.timerText}>Tempo de Treino: {formatTime(seconds)}</Text>
                     </View>
 
                     <TouchableOpacity 
                         style={styles.completeButton}
-                        onPress={handleCompleteTraining} 
+                        onPress={handleCompleteTraining}
                     >
                         <Text style={styles.completeButtonText}>Marcar como Concluído</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* 6. RENDERIZAÇÃO DO MODAL */}
                 <XPFeedbackModal
                     visible={isModalVisible}
                     onClose={handleCloseModal}
-                    xp={10} // Podemos deixar dinâmico no futuro
+                    xp={10}
                     time={formatTime(seconds)}
                 />
             </SafeAreaView>
@@ -93,9 +84,20 @@ export default function TrainingPlayerScreen({ route, navigation }) {
     );
 }
 
-// ADICIONAMOS NOVOS ESTILOS
+
 const styles = StyleSheet.create({
-    // ... (estilos header, backButton, content, title, difficulty, videoContainer)
+    video: {
+        width: '100%',
+        height: 220, 
+        borderRadius: 15,
+        backgroundColor: 'black', 
+    },
+    
+    header: { padding: 20 },
+    backButton: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+    content: { flex: 1, paddingHorizontal: 20 },
+    title: { color: 'white', fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 5 },
+    difficulty: { color: '#00FFC2', fontSize: 16, textAlign: 'center', marginBottom: 20 },
     timerContainer: {
         alignItems: 'center',
         marginVertical: 20,

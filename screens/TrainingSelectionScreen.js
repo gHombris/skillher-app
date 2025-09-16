@@ -12,16 +12,13 @@ const categories = [
 
 const exercises = {
     chute: [
-        { id: 'c1', title: 'Chute Rasteiro de Precisão', difficulty: 'Iniciante', videoId: 'B2yfxh2D32A' },
-        { id: 'c2', title: 'Finalização de Primeira', difficulty: 'Mediana', videoId: 'h9o_s_o0fVE' },
-        { id: 'c3', title: 'Voleio e Meio-Voleio', difficulty: 'Avançada', videoId: '4z8-d_ebri8' },
+        { id: 'c1', title: 'Chute Rasteiro de Precisão', difficulty: 'Iniciante', videoPath: require('../assets/videos/chute_rasteiro.mp4') }
     ],
     drible: [
-        { id: 'd1', title: 'Controle de Bola Básico', difficulty: 'Iniciante', videoId: 'xP5o0p9S234' },
-        { id: 'd2', title: 'Drible Curto em Espaço Reduzido', difficulty: 'Mediana', videoId: 'GOz2eIq93fI' },
+        { id: 'd1', title: 'Controle de Bola Básico', difficulty: 'Iniciante', videoPath: require('../assets/videos/controle_bola.mp4') }
     ],
     passe: [
-        { id: 'p1', title: 'Passe de Chapa (Curto)', difficulty: 'Iniciante', videoId: '5-w_p--e_6I' },
+        { id: 'p1', title: 'Passe de Chapa (Curto)', difficulty: 'Iniciante', videoPath: require('../assets/videos/passe_chapa.mp4') }
     ],
     defesa: [],
 };

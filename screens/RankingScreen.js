@@ -1,6 +1,6 @@
 import React from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, Image, StyleSheet, FlatList } from 'react-native';
+import { View, Text, Image, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 
@@ -24,13 +24,15 @@ const rankingDataWithZones = [
 ];
 
 
-const PlayerRow = ({ item }) => (
-    <View style={styles.playerRow}>
-        <Text style={styles.playerRank}>{item.rank}</Text>
-        <Image source={item.avatar} style={styles.playerAvatar} />
-        <Text style={styles.playerName}>{item.nome}</Text>
-        <Text style={styles.playerXP}>{item.xp}XP</Text>
-    </View>
+const PlayerRow = ({ item, navigation }) => (
+    <TouchableOpacity onPress={() => navigation.navigate('Dashboard', { userId: item.id })}>
+        <View style={styles.playerRow}>
+            <Text style={styles.playerRank}>{item.rank}</Text>
+            <Image source={item.avatar} style={styles.playerAvatar} />
+            <Text style={styles.playerName}>{item.nome}</Text>
+            <Text style={styles.playerXP}>{item.xp}XP</Text>
+        </View>
+    </TouchableOpacity>
 );
 
 
@@ -48,7 +50,7 @@ export default function RankingScreen({ navigation }) {
         if (item.type === 'zone') {
             return <ZoneDivider title={item.title} icon={item.icon} />;
         }
-        return <PlayerRow item={item} />;
+        return <PlayerRow item={item} navigation={navigation} />;
     };
 
     return (
