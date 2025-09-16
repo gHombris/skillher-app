@@ -1,6 +1,5 @@
 import React from 'react';
-// A LINHA ABAIXO É A CORREÇÃO. PRECISAMOS IMPORTAR OS COMPONENTES QUE USAMOS.
-import { View, Text, TouchableOpacity } from 'react-native'; 
+import { View, Text, TouchableOpacity,StyleSheet } from 'react-native'; 
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -13,6 +12,7 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import RankingScreen from './screens/RankingScreen';
+import TrainingSelectionScreen from './screens/TrainingSelectionScreen';
 
 const AuthStack = createStackNavigator();
 const AppTabs = createBottomTabNavigator();
@@ -20,6 +20,11 @@ const AppTabs = createBottomTabNavigator();
 // --- Componente de Barra de Abas Customizado ---
 function CustomTabBar({ state, descriptors, navigation }) {
     const insets = useSafeAreaInsets();
+    const orderedRoutes = [
+        state.routes.find(r => r.name === 'Dashboard'),
+        { name: 'Training', custom: true }, 
+        state.routes.find(r => r.name === 'Ranking')
+    ];
 
     return (
         
@@ -62,6 +67,7 @@ function AppNavigator() {
             screenOptions={{ headerShown: false }}
         >
             <AppTabs.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarLabel: 'Perfil' }} />
+            <AppTabs.Screen name="Training" component={TrainingSelectionScreen} options={{ tabBarLabel: 'Treinar' }}/>
             <AppTabs.Screen name="Ranking" component={RankingScreen} />
         </AppTabs.Navigator>
     );
@@ -69,6 +75,29 @@ function AppNavigator() {
 
 // Navegação geral
 export default function App() {
+    const styles = StyleSheet.create({
+    trainingButton: {
+        flex: 1,
+        backgroundColor: '#00FFC2',
+        borderRadius: 25,
+        paddingVertical: 10,
+        marginHorizontal: 5,
+        justifyContent: 'center',
+        alignItems: 'center',
+        
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+       
+        elevation: 5,
+    },
+    trainingButtonText: {
+        color: 'black',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+});
     return (
         <SafeAreaProvider>
             <NavigationContainer>
