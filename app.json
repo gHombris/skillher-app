@@ -20,10 +20,16 @@
         "foregroundImage": "./assets/Skill.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.hombris.mobileapp"
     },
     "web": {
       "favicon": "./assets/Skill.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3cf3e39c-0b67-407c-a0be-b3d110a60cdc"
+      }
     }
   }
 }

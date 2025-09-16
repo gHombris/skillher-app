@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, SafeAreaView, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, Image, StyleSheet, FlatList } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // --- NOSSOS DADOS MOCK ATUALIZADOS ---
