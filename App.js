@@ -13,53 +13,71 @@ import RegisterScreen from './screens/RegisterScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import RankingScreen from './screens/RankingScreen';
 import TrainingSelectionScreen from './screens/TrainingSelectionScreen';
+import TrainingPlayerScreen from './screens/TrainingPlayerScreen';
 
 const AuthStack = createStackNavigator();
 const AppTabs = createBottomTabNavigator();
+const TrainingStack = createStackNavigator();
 
-// --- Componente de Barra de Abas Customizado ---
-function CustomTabBar({ state, descriptors, navigation }) {
-    const insets = useSafeAreaInsets();
-    const orderedRoutes = [
-        state.routes.find(r => r.name === 'Dashboard'),
-        { name: 'Training', custom: true }, 
-        state.routes.find(r => r.name === 'Ranking')
-    ];
-
+// Criamos um "sub-navegador" para o fluxo de treino
+function TrainingNavigator() {
     return (
-        
-        <SafeAreaView edges={['bottom', 'left', 'right']} style={{ backgroundColor: 'rgba(30, 0, 50, 0.8)' }}>
-        <View style={{ flexDirection: 'row', paddingHorizontal: 10, paddingTop: 10,paddingTop: 10 + insets.bottom, backgroundColor: 'rgba(30, 0, 50, 0.8)' }}>
-            {state.routes.map((route, index) => {
-                const { options } = descriptors[route.key];
-                const label = options.tabBarLabel !== undefined ? options.tabBarLabel : options.title !== undefined ? options.title : route.name;
-                const isFocused = state.index === index;
-
-                const onPress = () => {
-                    const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-                    if (!isFocused && !event.defaultPrevented) {
-                        navigation.navigate(route.name);
-                    }
-                };
-
-                return (
-                    <TouchableOpacity
-                        key={index}
-                        onPress={onPress}
-                        style={{ flex: 1, paddingVertical: 10, borderRadius: 20, backgroundColor: isFocused ? '#00FFC2' : 'transparent' }}
-                    >
-                        <Text style={{ color: isFocused ? 'black' : 'white', textAlign: 'center', fontWeight: 'bold' }}>
-                            {label}
-                        </Text>
-                    </TouchableOpacity>
-                );
-            })}
-        </View>
-    </SafeAreaView>
+        <TrainingStack.Navigator screenOptions={{ headerShown: false }}>
+            <TrainingStack.Screen name="TrainingSelection" component={TrainingSelectionScreen} />
+            <TrainingStack.Screen name="TrainingPlayer" component={TrainingPlayerScreen} />
+        </TrainingStack.Navigator>
     );
 }
 
-// Navegação principal do app (pós-login)
+// --- Componente de Barra de Abas Customizado (LÓGICA COMPLETA) ---
+function CustomTabBar({ state, descriptors, navigation }) {
+    return (
+        <SafeAreaView edges={['bottom', 'left', 'right']} style={{ backgroundColor: 'rgba(30, 0, 50, 0.8)' }}>
+            <View style={styles.tabBarContainer}>
+                {state.routes.map((route, index) => {
+                    const { options } = descriptors[route.key];
+                    const label = options.tabBarLabel !== undefined ? options.tabBarLabel : options.title !== undefined ? options.title : route.name;
+                    const isFocused = state.index === index;
+
+                    const onPress = () => {
+                        const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+                        if (!isFocused && !event.defaultPrevented) {
+                            navigation.navigate(route.name);
+                        }
+                    };
+
+                    // A MUDANÇA ESTÁ AQUI:
+                    // Se a rota for 'Training', renderizamos o botão grande e central.
+                    if (route.name === 'Training') {
+                        return (
+                            <TouchableOpacity
+                                key={route.key}
+                                onPress={onPress}
+                                style={styles.trainingButton}
+                            >
+                                <Text style={styles.trainingButtonText}>TREINAR</Text>
+                            </TouchableOpacity>
+                        );
+                    }
+
+                    // Para as outras rotas ('Dashboard', 'Ranking'), renderizamos o botão normal.
+                    return (
+                        <TouchableOpacity
+                            key={route.key}
+                            onPress={onPress}
+                            style={styles.regularTab}
+                        >
+                            <Text style={{ color: isFocused ? '#00FFC2' : 'white', fontWeight: 'bold' }}>
+                                {label}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+        </SafeAreaView>
+    );
+}
+
 function AppNavigator() {
     return (
         <AppTabs.Navigator
@@ -67,37 +85,13 @@ function AppNavigator() {
             screenOptions={{ headerShown: false }}
         >
             <AppTabs.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarLabel: 'Perfil' }} />
-            <AppTabs.Screen name="Training" component={TrainingSelectionScreen} options={{ tabBarLabel: 'Treinar' }}/>
+            <AppTabs.Screen name="Training" component={TrainingNavigator} options={{ tabBarLabel: 'Treinar' }}/>
             <AppTabs.Screen name="Ranking" component={RankingScreen} />
         </AppTabs.Navigator>
     );
 }
 
-// Navegação geral
 export default function App() {
-    const styles = StyleSheet.create({
-    trainingButton: {
-        flex: 1,
-        backgroundColor: '#00FFC2',
-        borderRadius: 25,
-        paddingVertical: 10,
-        marginHorizontal: 5,
-        justifyContent: 'center',
-        alignItems: 'center',
-        
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-       
-        elevation: 5,
-    },
-    trainingButtonText: {
-        color: 'black',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-});
     return (
         <SafeAreaProvider>
             <NavigationContainer>
@@ -112,3 +106,36 @@ export default function App() {
         </SafeAreaProvider>
     );
 }
+
+const styles = StyleSheet.create({
+    tabBarContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 10,
+        paddingTop: 10,
+        paddingBottom: 10,
+        alignItems: 'center',
+    },
+    regularTab: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: 10,
+    },
+    trainingButton: {
+        flex: 1.2, // Ocupa um pouco mais de espaço
+        backgroundColor: '#00FFC2',
+        borderRadius: 25,
+        paddingVertical: 12,
+        marginHorizontal: 5,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 5,
+    },
+    trainingButtonActive: {
+        // Podemos adicionar um estilo para quando a aba de treino estiver ativa, se quisermos
+    },
+    trainingButtonText: {
+        color: 'black',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+});

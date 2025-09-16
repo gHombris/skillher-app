@@ -3,7 +3,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// --- NOSSOS DADOS MOCK PARA OS TREINOS ---
 const categories = [
     { id: 'chute', title: 'Chute' },
     { id: 'drible', title: 'Drible' },
@@ -13,23 +12,21 @@ const categories = [
 
 const exercises = {
     chute: [
-        { id: 'c1', title: 'Chute Rasteiro de Precisão', difficulty: 'Iniciante' },
-        { id: 'c2', title: 'Finalização de Primeira', difficulty: 'Mediana' },
-        { id: 'c3', title: 'Voleio e Meio-Voleio', difficulty: 'Avançada' },
+        { id: 'c1', title: 'Chute Rasteiro de Precisão', difficulty: 'Iniciante', videoId: 'B2yfxh2D32A' },
+        { id: 'c2', title: 'Finalização de Primeira', difficulty: 'Mediana', videoId: 'h9o_s_o0fVE' },
+        { id: 'c3', title: 'Voleio e Meio-Voleio', difficulty: 'Avançada', videoId: '4z8-d_ebri8' },
     ],
     drible: [
-        { id: 'd1', title: 'Controle de Bola Básico', difficulty: 'Iniciante' },
-        { id: 'd2', title: 'Drible Curto em Espaço Reduzido', difficulty: 'Mediana' },
+        { id: 'd1', title: 'Controle de Bola Básico', difficulty: 'Iniciante', videoId: 'xP5o0p9S234' },
+        { id: 'd2', title: 'Drible Curto em Espaço Reduzido', difficulty: 'Mediana', videoId: 'GOz2eIq93fI' },
     ],
     passe: [
-        { id: 'p1', title: 'Passe de Chapa (Curto)', difficulty: 'Iniciante' },
+        { id: 'p1', title: 'Passe de Chapa (Curto)', difficulty: 'Iniciante', videoId: '5-w_p--e_6I' },
     ],
     defesa: [],
 };
-// ------------------------------------------
 
 export default function TrainingSelectionScreen({ navigation }) {
-    // Estado para guardar a categoria selecionada. Começa com a primeira da lista.
     const [selectedCategory, setSelectedCategory] = useState(categories[0].id);
 
     return (
@@ -57,13 +54,15 @@ export default function TrainingSelectionScreen({ navigation }) {
                     </ScrollView>
                 </View>
 
-                {/* Lista de Exercícios */}
                 <FlatList
                     data={exercises[selectedCategory]}
                     keyExtractor={item => item.id}
                     contentContainerStyle={styles.exerciseList}
                     renderItem={({ item }) => (
-                        <TouchableOpacity style={styles.exerciseCard}>
+                        <TouchableOpacity 
+                            style={styles.exerciseCard}
+                            onPress={() => navigation.navigate('TrainingPlayer', { exercise: item })}
+                        >
                             <View>
                                 <Text style={styles.exerciseTitle}>{item.title}</Text>
                                 <Text style={styles.exerciseDifficulty}>{item.difficulty}</Text>
@@ -82,6 +81,7 @@ export default function TrainingSelectionScreen({ navigation }) {
     );
 }
 
+// Os estilos permanecem os mesmos
 const styles = StyleSheet.create({
     header: { padding: 20, alignItems: 'center' },
     headerTitle: { color: 'white', fontSize: 26, fontWeight: 'bold' },
