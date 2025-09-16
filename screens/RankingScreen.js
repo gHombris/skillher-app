@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, Image, StyleSheet, FlatList } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// --- NOSSOS DADOS MOCK ATUALIZADOS ---
+
 const players = [
     { id: '1', nome: "Emilly", xp: 80, avatar: require('../assets/avatares/emilly.png') },
     { id: '2', nome: "Ana", xp: 50, avatar: require('../assets/avatares/ana.png') },
@@ -15,16 +15,15 @@ const players = [
     { id: '8', nome: "Luana Pereira", xp: 10, avatar: require('../assets/avatares/marta-futebol-brasil.png') }
 ];
 
-// Inserimos os divisores na lista de dados
+
 const rankingDataWithZones = [
     ...players.slice(0, 6).map((p, i) => ({ ...p, type: 'player', rank: i + 1 })),
     { id: 'promo_divider', type: 'zone', title: 'Zona promoção', icon: '⬆️' },
     ...players.slice(6, 8).map((p, i) => ({ ...p, type: 'player', rank: i + 7 })),
     { id: 'rebaixamento_divider', type: 'zone', title: 'Zona rebaixamento', icon: '⬇️' }
 ];
-// -------------------------
 
-// Componente para renderizar a linha da jogadora
+
 const PlayerRow = ({ item }) => (
     <View style={styles.playerRow}>
         <Text style={styles.playerRank}>{item.rank}</Text>
@@ -34,7 +33,7 @@ const PlayerRow = ({ item }) => (
     </View>
 );
 
-// Componente para renderizar o divisor de zona
+
 const ZoneDivider = ({ title, icon }) => (
     <View style={styles.zoneContainer}>
         <Text style={styles.zoneIcon}>{icon}</Text>
@@ -44,7 +43,7 @@ const ZoneDivider = ({ title, icon }) => (
 );
 
 export default function RankingScreen({ navigation }) {
-    // Função de renderização que decide qual componente mostrar
+    
     const renderItem = ({ item }) => {
         if (item.type === 'zone') {
             return <ZoneDivider title={item.title} icon={item.icon} />;
