@@ -8,19 +8,6 @@
 
 Protótipo de um aplicativo mobile gamificado para o ensino de fundamentos de futebol feminino, desenvolvido como parte das Sprints 3 e 4. O aplicativo foi construído com React Native e Expo, e consome uma API para exibir dados dinâmicos das jogadoras.
 
-## 📱 Telas Principais
-
-_Aqui é um ótimo lugar para adicionar screenshots do seu aplicativo em funcionamento!_
-
-| Login | Perfil (Dashboard) | Ranking |
-| :---: | :---: | :---: |
-| *(adicione o screenshot da tela de login aqui)* | *(adicione o screenshot da tela de perfil aqui)* | *(adicione o screenshot da tela de ranking aqui)* |
-
-| Seleção de Treino | Player de Vídeo |
-| :---: | :---: |
-| *(adicione o screenshot da tela de treino aqui)* | *(adicione o screenshot da tela de vídeo aqui)* |
-
-
 ## ✨ Funcionalidades Implementadas
 
 * **Fluxo de Autenticação:** Telas de Boas-Vindas, Login e Cadastro (protótipo navegável).
