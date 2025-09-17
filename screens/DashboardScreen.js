@@ -1,42 +1,80 @@
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import axios from 'axios'; 
 
-// O mock de dados 
+// --- DADOS DE CONFIGURAÇÃO ---
+const API_BASE_URL = 'https://68ca054c430c4476c3480155.mockapi.io'; 
 const LOGGED_IN_USER_ID = '8';
-const ALL_PLAYERS = {
-    '1': { id: '1', nome: "Emilly", xp: 80, avatar: require('../assets/avatares/emilly.png'), rank: 'Bronze', rank_icon_id: require('../assets/ranks/ferro.png'), xp_para_proximo_rank: 200, treinos_concluidos: 12, sequencia: 5 },
-    '2': { id: '2', nome: "Ana", xp: 50, avatar: require('../assets/avatares/ana.png'), rank: 'Bronze', rank_icon_id: require('../assets/ranks/ferro.png'), xp_para_proximo_rank: 200, treinos_concluidos: 8, sequencia: 3 },
-    '3': { id: '3', nome: "Maria", xp: 45, avatar: require('../assets/avatares/maria.png'), rank: 'Ferro', rank_icon_id: require('../assets/ranks/ferro.png'), xp_para_proximo_rank: 100, treinos_concluidos: 7, sequencia: 2 },
-    '4': { id: '4', nome: "Tatiana", xp: 35, avatar: require('../assets/avatares/tatiana.png'), rank: 'Ferro', rank_icon_id: require('../assets/ranks/ferro.png'), xp_para_proximo_rank: 100, treinos_concluidos: 5, sequencia: 1 },
-    '5': { id: '5', nome: "Ester", xp: 35, avatar: require('../assets/avatares/ester.png'), rank: 'Ferro', rank_icon_id: require('../assets/ranks/ferro.png'), xp_para_proximo_rank: 100, treinos_concluidos: 4, sequencia: 0 },
-    '6': { id: '6', nome: "Andreia", xp: 30, avatar: require('../assets/avatares/andreia.png'), rank: 'Ferro', rank_icon_id: require('../assets/ranks/ferro.png'), xp_para_proximo_rank: 100, treinos_concluidos: 3, sequencia: 0 },
-    '7': { id: '7', nome: "Monique", xp: 15, avatar: require('../assets/avatares/monique.png'), rank: 'Ferro', rank_icon_id: require('../assets/ranks/ferro.png'), xp_para_proximo_rank: 100, treinos_concluidos: 1, sequencia: 1 },
-    '8': { id: '8', nome: "Luana Pereira", xp: 10, avatar: require('../assets/avatares/marta-futebol-brasil.png'), rank: 'Ferro', rank_icon_id: require('../assets/ranks/ferro.png'), xp_para_proximo_rank: 100, treinos_concluidos: 0, sequencia: 0 }
+
+// UM "MAPA" PARA AS IMAGENS
+const avatarImages = {
+    'emilly.png': require('../assets/avatares/emilly.png'),
+    'ana.png': require('../assets/avatares/ana.png'),
+    'maria.png': require('../assets/avatares/maria.png'),
+    'tatiana.png': require('../assets/avatares/tatiana.png'),
+    'ester.png': require('../assets/avatares/ester.png'),
+    'andreia.png': require('../assets/avatares/andreia.png'),
+    'monique.png': require('../assets/avatares/monique.png'),
+    'luana_pereira.png': require('../assets/avatares/luana.png'),
+};
+
+const rankIconImages = {
+    'ferro.png': require('../assets/ranks/ferro.png'),
+    'bronze.png': require('../assets/ranks/bronze.png'),
+    'prata.png': require('../assets/ranks/prata.png'),
+    'ouro.png': require('../assets/ranks/ouro.png'),
+    'rubi.png': require('../assets/ranks/rubi.png'),
+    'ametista.png': require('../assets/ranks/ametista.png'),
+    'safira.png': require('../assets/ranks/safira.png'),
+    'diamante.png': require('../assets/ranks/diamante.png'),
+   
 };
 
 
 export default function DashboardScreen({ route }) {
-    
-   
     const [playerData, setPlayerData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    
+    // O useEffect busca os dados da API
     useEffect(() => {
         const userIdToDisplay = route.params?.userId || LOGGED_IN_USER_ID;
-        const jogadora = ALL_PLAYERS[userIdToDisplay];
-        setPlayerData(jogadora);
-    }, [route.params?.userId]); 
 
-    // Se os dados ainda não carregaram, mostramos uma tela de "carregando"
-    if (!playerData) {
+        const fetchPlayerData = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const response = await axios.get(`${API_BASE_URL}/Jogadoras/${userIdToDisplay}`);
+                setPlayerData(response.data);
+            } catch (err) {
+                setError("Não foi possível carregar o perfil.");
+                console.error("Erro ao buscar da API:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPlayerData();
+    }, [route.params?.userId]);
+
+    // Telas de Carregamento e Erro
+    if (loading) {
         return (
             <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="white" />
             </LinearGradient>
         );
     }
+    if (error) {
+        return (
+            <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.loadingContainer}>
+                <Text style={{color: 'white', fontSize: 16, textAlign: 'center'}}>{error}</Text>
+            </LinearGradient>
+        );
+    }
+    if (!playerData) return null;
 
     const isOwnProfile = playerData.id === LOGGED_IN_USER_ID;
     const xpPercentage = (playerData.xp / playerData.xp_para_proximo_rank) * 100;
@@ -46,22 +84,19 @@ export default function DashboardScreen({ route }) {
             <SafeAreaView style={{flex:1}}>
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     
-                    
                     <Text style={styles.headerTitle}>{isOwnProfile ? "Bem-vinda de volta!" : `Perfil de ${playerData.nome}`}</Text>
 
-                    
-                    <Image source={playerData.avatar} style={styles.avatar} /> 
+                    {/* 4. Usamos o "mapa" de imagens para encontrar a imagem correta */}
+                    <Image source={avatarImages[playerData.avatar]} style={styles.avatar} /> 
                     <View style={styles.nameContainer}>
                         <Text style={styles.name}>{playerData.nome}</Text>
-                        
-                       
                         {isOwnProfile && <Text style={styles.editIcon}>✏️</Text>}
                     </View>
 
                     <View style={styles.card}>
                         <View style={styles.rankInfo}>
-                            
-                            <Image source={playerData.rank_icon_id} style={styles.rankIcon} />
+                            {/* Fazemos o mesmo para o ícone de rank */}
+                            <Image source={rankIconImages[playerData.rank_icon_id]} style={styles.rankIcon} />
                             <View style={styles.rankTextContainer}>
                                 <Text style={styles.rankText}>Rank: {playerData.rank}</Text>
                                 <Text style={styles.xpText}>{playerData.xp}XP</Text>

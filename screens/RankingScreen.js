@@ -12,7 +12,7 @@ const players = [
     { id: '5', nome: "Ester", xp: 35, avatar: require('../assets/avatares/ester.png') },
     { id: '6', nome: "Andreia", xp: 30, avatar: require('../assets/avatares/andreia.png') },
     { id: '7', nome: "Monique", xp: 15, avatar: require('../assets/avatares/monique.png') },
-    { id: '8', nome: "Luana Pereira", xp: 10, avatar: require('../assets/avatares/marta-futebol-brasil.png') }
+    { id: '8', nome: "Luana Pereira", xp: 10, avatar: require('../assets/avatares/luana.png') }
 ];
 
 
