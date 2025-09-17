@@ -56,13 +56,12 @@ Antes de começar, você vai precisar ter instalado em sua máquina:
 
 1.  **Clone o repositório:**
     ```bash
-    # ATENÇÃO: Substitua pela URL do seu repositório!
-    git clone [https://github.com/seu-usuario/seu-repositorio-app.git](https://github.com/seu-usuario/seu-repositorio-app.git)
+    git clone [https://github.com/gHombris/skillher-app.git](https://github.com/gHombris/skillher-app.git)
     ```
 
 2.  **Navegue até a pasta do projeto:**
     ```bash
-    cd seu-repositorio-app
+    cd skillher-app
     ```
 
 3.  **Instale as dependências:**
