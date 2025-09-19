@@ -73,6 +73,6 @@ Este aplicativo foi projetado para consumir uma API. A URL da API está configur
 Para esta entrega da Sprint 3, a URL configurada aponta para uma API mock criada no **MockAPI.io**, que cumpre o requisito de consumir uma API de terceiros.
 
 ```javascript
-// Exemplo em screens/DashboardScreen.js
+
 const API_BASE_URL = 'https://68ca054c430c4476c3480155.mockapi.io'; 
 ```
