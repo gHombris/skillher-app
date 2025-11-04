@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, Image, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import axios from 'axios';
 
+const API_BASE_URL = 'http://192.168.15.115:5000'
 
 const players = [
     { id: '1', nome: "Emilly", xp: 80, avatar: require('../assets/avatares/emilly.png') },
@@ -45,7 +47,33 @@ const ZoneDivider = ({ title, icon }) => (
 );
 
 export default function RankingScreen({ navigation }) {
-    
+    const [rankingData, setRankingData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchRanking = async () => {
+            try {
+                // 4. BUSQUE OS DADOS DO NOVO ENDPOINT DE RANKING
+                const response = await axios.get(`${API_BASE_URL}/api/ranking/semanal`);
+                
+                // 5. PROCESSA OS DADOS PARA INCLUIR AS ZONAS
+                const players = response.data;
+                const processedData = [
+                    ...players.slice(0, 6).map((p, i) => ({ ...p, type: 'player', rank: i + 1, avatar_img: avatarImages[p.avatar] })),
+                    { id: 'promo_divider', type: 'zone', title: 'Zona promoção', icon: '⬆️' },
+                    ...players.slice(6, 8).map((p, i) => ({ ...p, type: 'player', rank: i + 7, avatar_img: avatarImages[p.avatar] })),
+                    { id: 'rebaixamento_divider', type: 'zone', title: 'Zona rebaixamento', icon: '⬇️' }
+                ];
+                setRankingData(processedData);
+            } catch (error) {
+                console.error("Erro ao buscar ranking:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchRanking();
+    }, []);
+
     const renderItem = ({ item }) => {
         if (item.type === 'zone') {
             return <ZoneDivider title={item.title} icon={item.icon} />;

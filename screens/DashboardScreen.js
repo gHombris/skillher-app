@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios'; 
 
 // --- DADOS DE CONFIGURAÇÃO ---
-const API_BASE_URL = 'https://68ca054c430c4476c3480155.mockapi.io'; 
+const API_BASE_URL = 'http://192.168.15.115:5000'; 
 const LOGGED_IN_USER_ID = '8';
 
 // UM "MAPA" PARA AS IMAGENS
@@ -46,7 +46,7 @@ export default function DashboardScreen({ route }) {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await axios.get(`${API_BASE_URL}/Jogadoras/${userIdToDisplay}`);
+                const response = await axios.get(`${API_BASE_URL}/api/jogadora/${userIdToDisplay}`);
                 setPlayerData(response.data);
             } catch (err) {
                 setError("Não foi possível carregar o perfil.");
