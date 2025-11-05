@@ -1,10 +1,60 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, TextInput, Alert, SafeAreaView } from 'react-native'; // Importado Alert e SafeAreaView
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext'; 
+
 const logoImage = require('../assets/Skill.png'); 
+const API_BASE_URL = 'http://192.168.15.173:5000'; // Confirme se este IP ainda é o seu
 
 export default function RegisterScreen({ navigation }) {
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+
+  const handleRegister = async () => {
+    if (loading) return;
+    setLoading(true);
+
+    if (!nome || !email || !password || !confirmPassword) {
+      Alert.alert("Erro", "Por favor, preencha todos os campos.");
+      setLoading(false);
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Erro", "As senhas não coincidem.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/register`, {
+        nome: nome,
+        email: email,
+        password: password
+      });
+
+      console.log("Registro bem-sucedido:", response.data);
+      login(response.data);
+      
+      // ESTA É A CORREÇÃO: Navegar para 'App'
+      navigation.navigate('App'); 
+
+    } catch (error) {
+      if (error.response && error.response.data) {
+        Alert.alert("Erro no Registro", error.response.data.message);
+      } else {
+        Alert.alert("Erro de Conexão", "Não foi possível conectar ao servidor.");
+      }
+      console.error("Erro ao registrar:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <LinearGradient
       colors={['#00FFC2', '#4D008C']}
@@ -20,16 +70,45 @@ export default function RegisterScreen({ navigation }) {
         
         <Text style={styles.title}>Crie sua conta</Text>
 
-        <TextInput style={styles.input} placeholder="Nome de usuário" placeholderTextColor="#B0B0B0" />
-        <TextInput style={styles.input} placeholder="Insira seu email" placeholderTextColor="#B0B0B0" keyboardType="email-address" />
-        <TextInput style={styles.input} placeholder="Insira sua senha" placeholderTextColor="#B0B0B0" secureTextEntry />
-        <TextInput style={styles.input} placeholder="Insira sua senha novamente" placeholderTextColor="#B0B0B0" secureTextEntry />
+        <TextInput 
+          style={styles.input} 
+          placeholder="Nome de usuário" 
+          placeholderTextColor="#B0B0B0" 
+          value={nome}
+          onChangeText={setNome}
+        />
+        <TextInput 
+          style={styles.input} 
+          placeholder="Insira seu email" 
+          placeholderTextColor="#B0B0B0" 
+          keyboardType="email-address" 
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+        />
+        <TextInput 
+          style={styles.input} 
+          placeholder="Insira sua senha" 
+          placeholderTextColor="#B0B0B0" 
+          secureTextEntry 
+          value={password}
+          onChangeText={setPassword}
+        />
+        <TextInput 
+          style={styles.input} 
+          placeholder="Insira sua senha novamente" 
+          placeholderTextColor="#B0B0B0" 
+          secureTextEntry 
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+        />
         
         <TouchableOpacity 
           style={styles.primaryButton}
-          onPress={() => navigation.navigate('Dashboard')} // Ação de cadastro
+          onPress={handleRegister} // <--- CORRIGIDO
+          disabled={loading}
         >
-          <Text style={styles.primaryButtonText}>Criar uma conta</Text>
+          <Text style={styles.primaryButtonText}>{loading ? "Criando..." : "Criar uma conta"}</Text>
         </TouchableOpacity>
 
         <Text style={styles.separatorText}>Ou</Text>
@@ -49,7 +128,7 @@ export default function RegisterScreen({ navigation }) {
   );
 }
 
-// Reutilizamos os mesmos estilos do LoginScreen, então podemos colocar isso num arquivo separado depois
+// Estilos
 const styles = StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1, paddingHorizontal: 20, justifyContent: 'center' },

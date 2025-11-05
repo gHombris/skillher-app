@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Button } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Button, Alert } from 'react-native'; // Adicionado Alert
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
 import XPFeedbackModal from '../components/XPFeedbackModal';
+import axios from 'axios'; // Importado axios
+import { useAuth } from '../context/AuthContext'; // Importado useAuth
+
+// URL da API
+const API_BASE_URL = 'http://192.168.15.173:5000'; // CONFIRME SE ESTE IP AINDA É O CORRETO
 
 const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -17,6 +22,9 @@ export default function TrainingPlayerScreen({ route, navigation }) {
     const [isModalVisible, setModalVisible] = useState(false);
     const intervalRef = useRef(null);
 
+    // Pegamos o usuário e a função de login (para atualizar o contexto)
+    const { user, login } = useAuth();
+
     useEffect(() => {
         intervalRef.current = setInterval(() => {
             setSeconds(prevSeconds => prevSeconds + 1);
@@ -29,8 +37,34 @@ export default function TrainingPlayerScreen({ route, navigation }) {
         setModalVisible(true);
     };
 
-    const handleCloseModal = () => {
+    // Esta função agora salva na API
+    const handleCloseModal = async () => {
         setModalVisible(false);
+        const xpGanhos = 10; // O XP que o modal informa
+
+        if (!user) {
+            console.error("Usuário não logado, não é possível salvar o progresso.");
+            navigation.goBack();
+            return;
+        }
+
+        // Chama a API para salvar o progresso
+        try {
+            console.log(`Salvando progresso para ID: ${user.id}, XP: ${xpGanhos}`);
+            const response = await axios.post(`${API_BASE_URL}/api/jogadora/atualizar_progresso`, {
+                user_id: user.id,
+                xp_ganho: xpGanhos
+            });
+            
+            // Atualiza o usuário no contexto global com os novos dados (novo XP, etc.)
+            login(response.data);
+            console.log("Progresso salvo com sucesso!");
+
+        } catch (error) {
+            console.error("Erro ao salvar progresso:", error);
+            Alert.alert("Erro", "Não foi possível salvar seu progresso. Tente novamente.");
+        }
+        
         navigation.goBack();
     };
 
@@ -47,7 +81,6 @@ export default function TrainingPlayerScreen({ route, navigation }) {
                     <Text style={styles.title}>{exercise.title}</Text>
                     <Text style={styles.difficulty}>{exercise.difficulty}</Text>
 
-                    {/* 2. SUBSTITUÍMOS O PLAYER DO YOUTUBE PELO PLAYER NATIVO */}
                     <Video
                         ref={videoRef}
                         style={styles.video}
@@ -56,7 +89,7 @@ export default function TrainingPlayerScreen({ route, navigation }) {
                         resizeMode={ResizeMode.CONTAIN} 
                         onPlaybackStatusUpdate={status => {
                             if (status.didJustFinish) {
-                                
+                                // (lógica de autoplay, etc. pode vir aqui)
                             }
                         }}
                     />
@@ -76,13 +109,13 @@ export default function TrainingPlayerScreen({ route, navigation }) {
                 <XPFeedbackModal
                     visible={isModalVisible}
                     onClose={handleCloseModal}
-                    xp={10}
+                    xp={10} // Valor fixo de XP
                     time={formatTime(seconds)}
                 />
             </SafeAreaView>
         </LinearGradient>
     );
-}
+} // <--- CHAVE DE FECHAMENTO DO COMPONENTE
 
 
 const styles = StyleSheet.create({

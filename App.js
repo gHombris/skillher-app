@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity,StyleSheet } from 'react-native'; 
+import { View, Text, TouchableOpacity,StyleSheet, ActivityIndicator } from 'react-native'; 
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -7,10 +7,12 @@ import { SafeAreaProvider , SafeAreaView, useSafeAreaInsets } from 'react-native
 import { StatusBar } from 'expo-status-bar';
 
 // Telas
+import { AuthProvider , useAuth } from './context/AuthContext';
 import WelcomeScreen from './screens/WelcomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import DashboardScreen from './screens/DashboardScreen';
+import EditProfileScreen from './screens/EditProfileScreen';
 import RankingScreen from './screens/RankingScreen';
 import TrainingSelectionScreen from './screens/TrainingSelectionScreen';
 import TrainingPlayerScreen from './screens/TrainingPlayerScreen';
@@ -18,6 +20,7 @@ import TrainingPlayerScreen from './screens/TrainingPlayerScreen';
 const AuthStack = createStackNavigator();
 const AppTabs = createBottomTabNavigator();
 const TrainingStack = createStackNavigator();
+const ProfileStack = createStackNavigator();
 
 // Criamos um "sub-navegador" para o fluxo de treino
 function TrainingNavigator() {
@@ -28,7 +31,14 @@ function TrainingNavigator() {
         </TrainingStack.Navigator>
     );
 }
-
+function ProfileNavigator() {
+    return (
+        <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+            <ProfileStack.Screen name="ProfileDashboard" component={DashboardScreen} />
+            <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
+        </ProfileStack.Navigator>
+    );
+}
 // --- Componente de Barra de Abas Customizado (LÓGICA COMPLETA) ---
 function CustomTabBar({ state, descriptors, navigation }) {
     return (
@@ -84,25 +94,52 @@ function AppNavigator() {
             tabBar={props => <CustomTabBar {...props} />}
             screenOptions={{ headerShown: false }}
         >
-            <AppTabs.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarLabel: 'Perfil' }} />
+            <AppTabs.Screen name="Dashboard" component={ProfileNavigator} options={{ tabBarLabel: 'Perfil' }} />
             <AppTabs.Screen name="Training" component={TrainingNavigator} options={{ tabBarLabel: 'Treinar' }}/>
             <AppTabs.Screen name="Ranking" component={RankingScreen} />
         </AppTabs.Navigator>
     );
 }
+function RootNavigator() {
+    const { user, isLoading } = useAuth();
 
+    // Se estivermos carregando o usuário do storage, mostre uma tela de loading
+    if (isLoading) {
+        return (
+            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#4D008C'}}>
+                <ActivityIndicator size="large" color="#00FFC2" />
+            </View>
+        );
+    }
+
+    // Após carregar, decidimos qual Stack mostrar
+    return (
+        <NavigationContainer>
+            {/* Se houver usuário, mostre o App. Se não, mostre as telas de login. */}
+            <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+                {user ? (
+                    // Já está logado, vai direto pro App
+                    <AuthStack.Screen name="App" component={AppNavigator} />
+                ) : (
+                    // Não está logado, fluxo de autenticação
+                    <>
+                        <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
+                        <AuthStack.Screen name="Login" component={LoginScreen} />
+                        <AuthStack.Screen name="Register" component={RegisterScreen} />
+                    </>
+                )}
+            </AuthStack.Navigator>
+        </NavigationContainer>
+    );
+}
 export default function App() {
     return (
-        <SafeAreaProvider>
-            <NavigationContainer>
-                <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-                    <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
-                    <AuthStack.Screen name="Login" component={LoginScreen} />
-                    <AuthStack.Screen name="Register" component={RegisterScreen} />
-                    <AuthStack.Screen name="App" component={AppNavigator} />
-                </AuthStack.Navigator>
-            </NavigationContainer>
-            <StatusBar style="light" />
+        <SafeAreaProvider style={styles.root}>
+            <AuthProvider>
+                {/* // <<< MODIFICADO: Usamos o RootNavigator */}
+                <RootNavigator />
+                <StatusBar style="light" />
+            </AuthProvider>
         </SafeAreaProvider>
     );
 }

@@ -3,34 +3,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, Image, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
+import { avatarImages } from './DashboardScreen';
 
-const API_BASE_URL = 'http://192.168.15.115:5000'
-
-const players = [
-    { id: '1', nome: "Emilly", xp: 80, avatar: require('../assets/avatares/emilly.png') },
-    { id: '2', nome: "Ana", xp: 50, avatar: require('../assets/avatares/ana.png') },
-    { id: '3', nome: "Maria", xp: 45, avatar: require('../assets/avatares/maria.png') },
-    { id: '4', nome: "Tatiana", xp: 35, avatar: require('../assets/avatares/tatiana.png') },
-    { id: '5', nome: "Ester", xp: 35, avatar: require('../assets/avatares/ester.png') },
-    { id: '6', nome: "Andreia", xp: 30, avatar: require('../assets/avatares/andreia.png') },
-    { id: '7', nome: "Monique", xp: 15, avatar: require('../assets/avatares/monique.png') },
-    { id: '8', nome: "Luana Pereira", xp: 10, avatar: require('../assets/avatares/luana.png') }
-];
-
-
-const rankingDataWithZones = [
-    ...players.slice(0, 6).map((p, i) => ({ ...p, type: 'player', rank: i + 1 })),
-    { id: 'promo_divider', type: 'zone', title: 'Zona promoção', icon: '⬆️' },
-    ...players.slice(6, 8).map((p, i) => ({ ...p, type: 'player', rank: i + 7 })),
-    { id: 'rebaixamento_divider', type: 'zone', title: 'Zona rebaixamento', icon: '⬇️' }
-];
+const API_BASE_URL = 'http://192.168.15.173:5000'
 
 
 const PlayerRow = ({ item, navigation }) => (
     <TouchableOpacity onPress={() => navigation.navigate('Dashboard', { userId: item.id })}>
         <View style={styles.playerRow}>
             <Text style={styles.playerRank}>{item.rank}</Text>
-            <Image source={item.avatar} style={styles.playerAvatar} />
+            <Image source={item.avatar_img} style={styles.playerAvatar} />
             <Text style={styles.playerName}>{item.nome}</Text>
             <Text style={styles.playerXP}>{item.xp}XP</Text>
         </View>
@@ -90,7 +72,7 @@ export default function RankingScreen({ navigation }) {
 
                 <View style={styles.card}>
                     <FlatList
-                        data={rankingDataWithZones}
+                        data={rankingData}
                         renderItem={renderItem}
                         keyExtractor={item => item.id}
                         ItemSeparatorComponent={() => <View style={styles.separator} />}

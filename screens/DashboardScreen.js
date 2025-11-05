@@ -4,12 +4,13 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, ActivityIn
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios'; 
 
+import { useAuth } from '../context/AuthContext';
+
 // --- DADOS DE CONFIGURAÇÃO ---
-const API_BASE_URL = 'http://192.168.15.115:5000'; 
-const LOGGED_IN_USER_ID = '8';
+const API_BASE_URL = 'http://192.168.15.173:5000'; 
 
 // UM "MAPA" PARA AS IMAGENS
-const avatarImages = {
+export const avatarImages = {
     'emilly.png': require('../assets/avatares/emilly.png'),
     'ana.png': require('../assets/avatares/ana.png'),
     'maria.png': require('../assets/avatares/maria.png'),
@@ -20,7 +21,7 @@ const avatarImages = {
     'luana_pereira.png': require('../assets/avatares/luana.png'),
 };
 
-const rankIconImages = {
+export const rankIconImages = {
     'ferro.png': require('../assets/ranks/ferro.png'),
     'bronze.png': require('../assets/ranks/bronze.png'),
     'prata.png': require('../assets/ranks/prata.png'),
@@ -32,15 +33,34 @@ const rankIconImages = {
    
 };
 
+const RANK_XP_MAP = {
+    'Ferro': { proximo: 50, anterior: 0 },
+    'Bronze': { proximo: 100, anterior: 50 },
+    'Prata': { proximo: 200, anterior: 100 },
+    'Ouro': { proximo: 400, anterior: 200 },
+    'Rubi': { proximo: 800, anterior: 400 },
+    'Ametista': { proximo: 1500, anterior: 800 },
+    'Safira': { proximo: 2500, anterior: 1500 },
+    'Diamante': { proximo: 9999, anterior: 2500 }, 
+};
 
-export default function DashboardScreen({ route }) {
+
+export default function DashboardScreen({ route, navigation }) {
+    const { user: loggedInUser } = useAuth();
+
     const [playerData, setPlayerData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     // O useEffect busca os dados da API
     useEffect(() => {
-        const userIdToDisplay = route.params?.userId || LOGGED_IN_USER_ID;
+        const userIdToDisplay = route.params?.userId || loggedInUser?.id;
+
+        if (!userIdToDisplay) {
+            setError("Usuário não encontrado.");
+            setLoading(false);
+            return;
+        }
 
         const fetchPlayerData = async () => {
             try {
@@ -57,7 +77,7 @@ export default function DashboardScreen({ route }) {
         };
 
         fetchPlayerData();
-    }, [route.params?.userId]);
+    }, [route.params?.userId, loggedInUser]);
 
     // Telas de Carregamento e Erro
     if (loading) {
@@ -76,8 +96,13 @@ export default function DashboardScreen({ route }) {
     }
     if (!playerData) return null;
 
-    const isOwnProfile = playerData.id === LOGGED_IN_USER_ID;
-    const xpPercentage = (playerData.xp / playerData.xp_para_proximo_rank) * 100;
+    const isOwnProfile = playerData.id === loggedInUser?.id;
+
+    
+    const rankInfo = RANK_XP_MAP[playerData.rank] || RANK_XP_MAP['Ferro'];
+    const xpNoRankAtual = playerData.xp - rankInfo.anterior;
+    const xpTotalDoRank = rankInfo.proximo - rankInfo.anterior;
+    const xpPercentage = (xpNoRankAtual / xpTotalDoRank) * 100;
     
     return (
         <LinearGradient colors={['#00FFC2', '#4D008C']} style={{flex:1}}>
@@ -86,22 +111,29 @@ export default function DashboardScreen({ route }) {
                     
                     <Text style={styles.headerTitle}>{isOwnProfile ? "Bem-vinda de volta!" : `Perfil de ${playerData.nome}`}</Text>
 
-                    {/* 4. Usamos o "mapa" de imagens para encontrar a imagem correta */}
-                    <Image source={avatarImages[playerData.avatar]} style={styles.avatar} /> 
+                    {/* // <<< CORRIGIDO: Usa 'avatar_filename' */}
+                    <Image source={avatarImages[playerData.avatar_filename]} style={styles.avatar} /> 
                     <View style={styles.nameContainer}>
                         <Text style={styles.name}>{playerData.nome}</Text>
-                        {isOwnProfile && <Text style={styles.editIcon}>✏️</Text>}
+                        
+                        {isOwnProfile && (
+                            <TouchableOpacity onPress={() => navigation.navigate('EditProfile')}>
+                                <Text style={styles.editIcon}>✏️</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                     <View style={styles.card}>
                         <View style={styles.rankInfo}>
-                            {/* Fazemos o mesmo para o ícone de rank */}
-                            <Image source={rankIconImages[playerData.rank_icon_id]} style={styles.rankIcon} />
+                            {/* // <<< CORRIGIDO: Usa 'playerData.rank' para achar o .png */}
+                            <Image source={rankIconImages[playerData.rank.toLowerCase() + '.png']} style={styles.rankIcon} />
                             <View style={styles.rankTextContainer}>
                                 <Text style={styles.rankText}>Rank: {playerData.rank}</Text>
-                                <Text style={styles.xpText}>{playerData.xp}XP</Text>
+                                {/* // <<< MODIFICADO: Mostra o progresso do rank */}
+                                <Text style={styles.xpText}>{playerData.xp} XP (Próx. Rank: {rankInfo.proximo} XP)</Text>
                             </View>
                         </View>
+                        {/* // <<< CORRIGIDO: Usa a porcentagem correta */}
                         <View style={styles.progressBarBackground}>
                             <View style={[styles.progressBarForeground, { width: `${xpPercentage}%` }]} />
                         </View>
