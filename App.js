@@ -1,13 +1,15 @@
 import React from 'react';
-import { View, Text, TouchableOpacity,StyleSheet, ActivityIndicator } from 'react-native'; 
+// <<< CORRIGIDO: Text e LinearGradient importados >>>
+import { TouchableOpacity, StyleSheet, ActivityIndicator, View, Text } from 'react-native'; 
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { SafeAreaProvider , SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LinearGradient } from 'expo-linear-gradient'; // <<< ESTE IMPORT FALTAVA
 
 // Telas
-import { AuthProvider , useAuth } from './context/AuthContext';
 import WelcomeScreen from './screens/WelcomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -20,9 +22,9 @@ import TrainingPlayerScreen from './screens/TrainingPlayerScreen';
 const AuthStack = createStackNavigator();
 const AppTabs = createBottomTabNavigator();
 const TrainingStack = createStackNavigator();
-const ProfileStack = createStackNavigator();
+const ProfileStack = createStackNavigator(); 
 
-// Criamos um "sub-navegador" para o fluxo de treino
+// --- NOSSOS NAVEGADORES ---
 function TrainingNavigator() {
     return (
         <TrainingStack.Navigator screenOptions={{ headerShown: false }}>
@@ -31,6 +33,7 @@ function TrainingNavigator() {
         </TrainingStack.Navigator>
     );
 }
+
 function ProfileNavigator() {
     return (
         <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
@@ -39,7 +42,8 @@ function ProfileNavigator() {
         </ProfileStack.Navigator>
     );
 }
-// --- Componente de Barra de Abas Customizado (LÓGICA COMPLETA) ---
+
+// CustomTabBar (Código original, sem mudanças)
 function CustomTabBar({ state, descriptors, navigation }) {
     return (
         <SafeAreaView edges={['bottom', 'left', 'right']} style={{ backgroundColor: 'rgba(30, 0, 50, 0.8)' }}>
@@ -56,8 +60,6 @@ function CustomTabBar({ state, descriptors, navigation }) {
                         }
                     };
 
-                    // A MUDANÇA ESTÁ AQUI:
-                    // Se a rota for 'Training', renderizamos o botão grande e central.
                     if (route.name === 'Training') {
                         return (
                             <TouchableOpacity
@@ -70,7 +72,6 @@ function CustomTabBar({ state, descriptors, navigation }) {
                         );
                     }
 
-                    // Para as outras rotas ('Dashboard', 'Ranking'), renderizamos o botão normal.
                     return (
                         <TouchableOpacity
                             key={route.key}
@@ -88,69 +89,103 @@ function CustomTabBar({ state, descriptors, navigation }) {
     );
 }
 
+// <<< CORREÇÃO: Adicionados os 'tabBarLabel' que faltavam >>>
 function AppNavigator() {
     return (
         <AppTabs.Navigator
             tabBar={props => <CustomTabBar {...props} />}
             screenOptions={{ headerShown: false }}
         >
-            <AppTabs.Screen name="Dashboard" component={ProfileNavigator} options={{ tabBarLabel: 'Perfil' }} />
-            <AppTabs.Screen name="Training" component={TrainingNavigator} options={{ tabBarLabel: 'Treinar' }}/>
-            <AppTabs.Screen name="Ranking" component={RankingScreen} />
+            <AppTabs.Screen 
+                name="Dashboard" 
+                component={ProfileNavigator} 
+                options={{ tabBarLabel: 'Perfil' }} 
+                listeners={({ navigation }) => ({
+                    tabPress: (e) => {
+                        e.preventDefault(); 
+                        navigation.navigate('Dashboard', { 
+                            screen: 'ProfileDashboard',
+                            params: undefined, // Limpa os params para voltar ao seu perfil
+                        });
+                    },
+                })}
+            />
+            <AppTabs.Screen 
+                name="Training" 
+                component={TrainingNavigator} 
+                options={{ tabBarLabel: 'Treinar' }} // <<< CORRIGIDO
+            />
+            <AppTabs.Screen 
+                name="Ranking" 
+                component={RankingScreen} 
+                options={{ tabBarLabel: 'Ranking' }} // <<< CORRIGIDO
+            />
         </AppTabs.Navigator>
     );
 }
-function RootNavigator() {
-    const { user, isLoading } = useAuth();
 
-    // Se estivermos carregando o usuário do storage, mostre uma tela de loading
+
+// --- LÓGICA DE NAVEGAÇÃO CORRIGIDA ---
+function RootNavigator() {
+    const { user, isLoading } = useAuth(); // Pega o usuário e o estado de loading
+
     if (isLoading) {
         return (
-            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#4D008C'}}>
-                <ActivityIndicator size="large" color="#00FFC2" />
-            </View>
+            <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#FFFFFF" />
+            </LinearGradient>
         );
     }
 
-    // Após carregar, decidimos qual Stack mostrar
     return (
-        <NavigationContainer>
-            {/* Se houver usuário, mostre o App. Se não, mostre as telas de login. */}
-            <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-                {user ? (
-                    // Já está logado, vai direto pro App
-                    <AuthStack.Screen name="App" component={AppNavigator} />
-                ) : (
-                    // Não está logado, fluxo de autenticação
-                    <>
-                        <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
-                        <AuthStack.Screen name="Login" component={LoginScreen} />
-                        <AuthStack.Screen name="Register" component={RegisterScreen} />
-                    </>
-                )}
-            </AuthStack.Navigator>
-        </NavigationContainer>
+        <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+            {user ? (
+                // 1. Usuário LOGADO: Mostra o app principal
+                <AuthStack.Screen name="App" component={AppNavigator} />
+            ) : (
+                // 2. Usuário DESLOGADO: Mostra as telas de autenticação
+                <>
+                    <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
+                    <AuthStack.Screen name="Login" component={LoginScreen} />
+                    <AuthStack.Screen name="Register" component={RegisterScreen} />
+                </>
+            )}
+        </AuthStack.Navigator>
     );
 }
+
+
 export default function App() {
     return (
         <SafeAreaProvider style={styles.root}>
             <AuthProvider>
-                {/* // <<< MODIFICADO: Usamos o RootNavigator */}
-                <RootNavigator />
+                {/* O NavigationContainer fica FORA e envolve o RootNavigator */}
+                <NavigationContainer>
+                    <RootNavigator />
+                </NavigationContainer>
                 <StatusBar style="light" />
             </AuthProvider>
         </SafeAreaProvider>
     );
 }
 
+// --- ESTILOS ---
 const styles = StyleSheet.create({
+    root: {
+        flex: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     tabBarContainer: {
         flexDirection: 'row',
         paddingHorizontal: 10,
         paddingTop: 10,
         paddingBottom: 10,
         alignItems: 'center',
+        backgroundColor: 'rgba(30, 0, 50, 0.8)'
     },
     regularTab: {
         flex: 1,
@@ -158,7 +193,7 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
     },
     trainingButton: {
-        flex: 1.2, // Ocupa um pouco mais de espaço
+        flex: 1.2,
         backgroundColor: '#00FFC2',
         borderRadius: 25,
         paddingVertical: 12,
@@ -166,9 +201,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 5,
-    },
-    trainingButtonActive: {
-        // Podemos adicionar um estilo para quando a aba de treino estiver ativa, se quisermos
     },
     trainingButtonText: {
         color: 'black',

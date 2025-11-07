@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios'; 
+import { useAuth } from '../context/AuthContext'; 
 
-import { useAuth } from '../context/AuthContext';
+const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // API Mockada
 
-// --- DADOS DE CONFIGURAÇÃO ---
-const API_BASE_URL = 'http://192.168.15.173:5000'; 
-
-// UM "MAPA" PARA AS IMAGENS
+// MAPA DE AVATARES (Exportado)
 export const avatarImages = {
     'emilly.png': require('../assets/avatares/emilly.png'),
     'ana.png': require('../assets/avatares/ana.png'),
@@ -21,6 +19,7 @@ export const avatarImages = {
     'luana_pereira.png': require('../assets/avatares/luana.png'),
 };
 
+// MAPA DE RANKS (Exportado e em minúsculas)
 export const rankIconImages = {
     'ferro.png': require('../assets/ranks/ferro.png'),
     'bronze.png': require('../assets/ranks/bronze.png'),
@@ -30,9 +29,9 @@ export const rankIconImages = {
     'ametista.png': require('../assets/ranks/ametista.png'),
     'safira.png': require('../assets/ranks/safira.png'),
     'diamante.png': require('../assets/ranks/diamante.png'),
-   
 };
 
+// Mapa de XP (Lógica do frontend)
 const RANK_XP_MAP = {
     'Ferro': { proximo: 50, anterior: 0 },
     'Bronze': { proximo: 100, anterior: 50 },
@@ -41,23 +40,27 @@ const RANK_XP_MAP = {
     'Rubi': { proximo: 800, anterior: 400 },
     'Ametista': { proximo: 1500, anterior: 800 },
     'Safira': { proximo: 2500, anterior: 1500 },
-    'Diamante': { proximo: 9999, anterior: 2500 }, 
+    'Diamante': { proximo: 9999, anterior: 2500 },
+};
+
+// Mapa de Conquistas
+const CONQUISTAS_MAP = {
+    'treino_1': { icone: '🥇', titulo: 'Primeiro Treino' },
+    'treino_10': { icone: '🏆', titulo: '10 Treinos Concluídos' },
 };
 
 
 export default function DashboardScreen({ route, navigation }) {
-    const { user: loggedInUser } = useAuth();
-
+    const { user: loggedInUser, logout, login } = useAuth(); 
     const [playerData, setPlayerData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // O useEffect busca os dados da API
     useEffect(() => {
         const userIdToDisplay = route.params?.userId || loggedInUser?.id;
 
         if (!userIdToDisplay) {
-            setError("Usuário não encontrado.");
+            setPlayerData(null);
             setLoading(false);
             return;
         }
@@ -66,20 +69,39 @@ export default function DashboardScreen({ route, navigation }) {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await axios.get(`${API_BASE_URL}/api/jogadora/${userIdToDisplay}`);
+                const response = await axios.get(`${API_BASE_URL}/${userIdToDisplay}`);
                 setPlayerData(response.data);
+
+                if (userIdToDisplay === loggedInUser?.id) {
+                    login(response.data);
+                }
+
             } catch (err) {
                 setError("Não foi possível carregar o perfil.");
-                console.error("Erro ao buscar da API:", err);
+                console.error("Erro ao buscar da API (MockAPI):", err);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchPlayerData();
-    }, [route.params?.userId, loggedInUser]);
+    }, [route.params?.userId, loggedInUser]); 
 
-    // Telas de Carregamento e Erro
+    const handleLogout = () => {
+        Alert.alert(
+            "Sair da conta",
+            "Você tem certeza que deseja sair?",
+            [
+                { text: "Cancelar", style: "cancel" },
+                { 
+                    text: "Sair", 
+                    style: "destructive", 
+                    onPress: () => logout()
+                }
+            ]
+        );
+    };
+
     if (loading) {
         return (
             <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.loadingContainer}>
@@ -87,31 +109,35 @@ export default function DashboardScreen({ route, navigation }) {
             </LinearGradient>
         );
     }
-    if (error) {
-        return (
+    
+    if (!playerData) {
+         return (
             <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.loadingContainer}>
-                <Text style={{color: 'white', fontSize: 16, textAlign: 'center'}}>{error}</Text>
+                <Text style={{color: 'white', fontSize: 16, textAlign: 'center'}}>
+                    {error || "Usuário não encontrado."}
+                </Text>
             </LinearGradient>
         );
     }
-    if (!playerData) return null;
 
     const isOwnProfile = playerData.id === loggedInUser?.id;
-
-    
     const rankInfo = RANK_XP_MAP[playerData.rank] || RANK_XP_MAP['Ferro'];
     const xpNoRankAtual = playerData.xp - rankInfo.anterior;
     const xpTotalDoRank = rankInfo.proximo - rankInfo.anterior;
     const xpPercentage = (xpNoRankAtual / xpTotalDoRank) * 100;
+    const rankIconKey = playerData.rank.toLowerCase() + '.png';
+    const conquistasDoJogador = Array.isArray(playerData.conquistas) ? playerData.conquistas : [];
     
     return (
-        <LinearGradient colors={['#00FFC2', '#4D008C']} style={{flex:1}}>
-            <SafeAreaView style={{flex:1}}>
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+        <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.container}>
+            <SafeAreaView style={styles.container}>
+                <ScrollView 
+                    style={styles.container} 
+                    contentContainerStyle={styles.scrollContent}
+                >
                     
                     <Text style={styles.headerTitle}>{isOwnProfile ? "Bem-vinda de volta!" : `Perfil de ${playerData.nome}`}</Text>
 
-                    {/* // <<< CORRIGIDO: Usa 'avatar_filename' */}
                     <Image source={avatarImages[playerData.avatar_filename]} style={styles.avatar} /> 
                     <View style={styles.nameContainer}>
                         <Text style={styles.name}>{playerData.nome}</Text>
@@ -125,15 +151,12 @@ export default function DashboardScreen({ route, navigation }) {
 
                     <View style={styles.card}>
                         <View style={styles.rankInfo}>
-                            {/* // <<< CORRIGIDO: Usa 'playerData.rank' para achar o .png */}
-                            <Image source={rankIconImages[playerData.rank.toLowerCase() + '.png']} style={styles.rankIcon} />
+                            <Image source={rankIconImages[rankIconKey]} style={styles.rankIcon} />
                             <View style={styles.rankTextContainer}>
                                 <Text style={styles.rankText}>Rank: {playerData.rank}</Text>
-                                {/* // <<< MODIFICADO: Mostra o progresso do rank */}
                                 <Text style={styles.xpText}>{playerData.xp} XP (Próx. Rank: {rankInfo.proximo} XP)</Text>
                             </View>
                         </View>
-                        {/* // <<< CORRIGIDO: Usa a porcentagem correta */}
                         <View style={styles.progressBarBackground}>
                             <View style={[styles.progressBarForeground, { width: `${xpPercentage}%` }]} />
                         </View>
@@ -150,9 +173,30 @@ export default function DashboardScreen({ route, navigation }) {
                         </View>
                     </View>
 
-                    <TouchableOpacity style={styles.card}>
+                    <View style={styles.card}>
                         <Text style={styles.conquistasTitle}>Conquistas</Text>
-                    </TouchableOpacity>
+                        <View style={styles.conquistasGrid}>
+                            {conquistasDoJogador.length > 0 ? (
+                                conquistasDoJogador.map((key) => (
+                                    <View style={styles.conquistaItem} key={key}>
+                                        <Text style={styles.conquistaIcon}>{CONQUISTAS_MAP[key]?.icone || '❓'}</Text>
+                                        <Text style={styles.conquistaText}>{CONQUISTAS_MAP[key]?.titulo || key}</Text>
+                                    </View>
+                                ))
+                            ) : (
+                                <Text style={styles.conquistaEmpty}>Continue treinando para desbloquear conquistas!</Text>
+                            )}
+                        </View>
+                    </View>
+
+                    {isOwnProfile && (
+                        <TouchableOpacity 
+                            style={styles.logoutButton}
+                            onPress={handleLogout}
+                        >
+                            <Text style={styles.logoutButtonText}>Sair da Conta</Text>
+                        </TouchableOpacity>
+                    )}
                 </ScrollView>
             </SafeAreaView>
         </LinearGradient>
@@ -165,9 +209,18 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    container: { flex: 1 },
-    safeArea: { flex: 1 },
-    scrollContent: { alignItems: 'center', paddingHorizontal: 20, paddingVertical: 20 },
+    container: { flex: 1 }, 
+    safeArea: { flex: 1 }, // Estilo 'safeArea' não é mais usado, 'container' é usado em seu lugar
+    
+    // <<< CORREÇÃO DO SCROLL >>>
+    scrollContent: { 
+        alignItems: 'center', 
+        paddingHorizontal: 20, 
+        paddingVertical: 20, 
+        paddingBottom: 60, // Espaço extra no final
+        flexGrow: 1, // <<< Garante que o container possa crescer
+        // Removido 'justifyContent: 'flex-start'' que estava quebrando o scroll
+    },
     headerTitle: { color: 'white', fontSize: 26, fontWeight: 'bold', marginBottom: 20 },
     avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: 'white', marginBottom: 10 },
     nameContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
@@ -185,5 +238,46 @@ const styles = StyleSheet.create({
     statBox: { backgroundColor: 'rgba(30, 0, 50, 0.6)', borderRadius: 15, padding: 20, width: '48%', alignItems: 'center' },
     statIcon: { fontSize: 24, marginBottom: 5 },
     statLabel: { color: 'white', fontSize: 14, textAlign: 'center' },
-    conquistasTitle: { color: 'white', fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
+    
+    conquistasTitle: { color: 'white', fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 },
+    conquistasGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+    },
+    conquistaItem: {
+        alignItems: 'center',
+        margin: 10,
+        width: 80,
+    },
+    conquistaIcon: {
+        fontSize: 40,
+    },
+    conquistaText: {
+        color: 'white',
+        fontSize: 12,
+        textAlign: 'center',
+        marginTop: 5,
+    },
+    conquistaEmpty: {
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontStyle: 'italic',
+        textAlign: 'center',
+        padding: 10,
+    },
+    
+    logoutButton: {
+        marginTop: 20,
+        paddingVertical: 10,
+        paddingHorizontal: 30,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 0, 0, 0.2)',
+        borderWidth: 1,
+        borderColor: 'red',
+    },
+    logoutButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
+    }
 });

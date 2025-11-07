@@ -2,19 +2,15 @@ import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, TextInput, SafeAreaView, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
-
-// <<< NOVO: Importar o hook useAuth
 import { useAuth } from '../context/AuthContext'; 
 
 const logoImage = require('../assets/Skill.png'); 
-const API_BASE_URL = 'http://192.168.15.173:5000'; 
+const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // <<< MOCKAPI
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // <<< NOVO: Pegar a função de login do nosso contexto
   const { login } = useAuth();
 
   const handleLogin = async () => {
@@ -28,28 +24,30 @@ export default function LoginScreen({ navigation }) {
     }
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/login`, {
-        email: email,
-        password: password
+      // LÓGICA MUDADA PARA O MOCKAPI (GET com filtros)
+      const response = await axios.get(API_BASE_URL, {
+        params: {
+          email: email,
+          password_hash: password // O MockAPI vai salvar a senha como "password_hash"
+        }
       });
 
-      console.log("Login bem-sucedido:", response.data);
-      
-      // <<< NOVO: Aqui salvamos o usuário no estado global
-      login(response.data); 
-      
-      navigation.navigate('App');
+      // O MockAPI retorna um array. Se o array tiver 1 usuário, o login bateu.
+      if (response.data && response.data.length > 0) {
+        const user = response.data[0];
+        console.log("Login (MockAPI) bem-sucedido:", user);
+        login(user); // Salva no contexto
+        navigation.navigate('App'); // Navega para o app
+      } else {
+        // Se o array voltar vazio, as credenciais estão erradas.
+        Alert.alert("Erro no Login", "Credenciais inválidas.");
+      }
 
     } catch (error) {
-      // 3. Se der errado (ex: 401 Credenciais Inválidas)
-      if (error.response && error.response.data) {
-        Alert.alert("Erro no Login", error.response.data.message); // Mostra a mensagem da API (ex: "Credenciais inválidas")
-      } else {
-        Alert.alert("Erro de Conexão", "Não foi possível conectar ao servidor.");
-      }
-      console.error("Erro ao fazer login:", error);
+      Alert.alert("Erro de Conexão", "Não foi possível conectar ao MockAPI.");
+      console.error("Erro ao fazer login (MockAPI):", error);
     } finally {
-      setLoading(false); // Libera o botão
+      setLoading(false);
     }
   };
 
@@ -73,33 +71,26 @@ export default function LoginScreen({ navigation }) {
           placeholder="Insira seu email"
           placeholderTextColor="#B0B0B0"
           keyboardType="email-address"
-          value={email} // <<< NOVO
-          onChangeText={setEmail} // <<< NOVO
-          autoCapitalize="none" // <<< NOVO
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
         />
         <TextInput
           style={styles.input}
           placeholder="Insira sua senha"
           placeholderTextColor="#B0B0B0"
-          secureTextEntry // Para esconder a senha
-          value={password} // <<< NOVO
-          onChangeText={setPassword} // <<< NOVO
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
         />
 
         <TouchableOpacity 
           style={styles.primaryButton}
-          onPress={handleLogin} // <<< NOVO: Chama nossa função de login
-          disabled={loading} // <<< NOVO: Desabilita o botão enquanto carrega
+          onPress={handleLogin}
+          disabled={loading}
         >
           <Text style={styles.primaryButtonText}>{loading ? "Entrando..." : "Entrar"}</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.separatorText}>Ou</Text>
-
-        <TouchableOpacity style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Continuar com o Google</Text>
-        </TouchableOpacity>
-        
+        </TouchableOpacity>        
         <View style={styles.footer}>
           <Text style={styles.footerText}>Ainda não tem uma conta? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
@@ -111,7 +102,7 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-// Estilos (sem modificações)
+// Estilos
 const styles = StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1, paddingHorizontal: 20, justifyContent: 'center' },

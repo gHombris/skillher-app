@@ -1,23 +1,19 @@
-// screens/EditProfileScreen.js
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Image, ScrollView, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { avatarImages } from './DashboardScreen'; // Importa o mapa
 
-// Importamos o mapa de avatares que já temos
-import { avatarImages } from './DashboardScreen'; // Assumindo que você exportou o mapa
-
-const API_BASE_URL = 'http://192.168.15.173:5000'; // Confirme seu IP
+const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // <<< MOCKAPI
 
 export default function EditProfileScreen({ navigation }) {
-    const { user, login } = useAuth(); // Pegamos o usuário atual e a função de login
+    const { user, login } = useAuth(); 
 
     const [nome, setNome] = useState(user.nome);
     const [selectedAvatar, setSelectedAvatar] = useState(user.avatar_filename);
     const [loading, setLoading] = useState(false);
 
-    // Transforma o mapa de imagens em um array para o FlatList
     const avatarList = Object.keys(avatarImages).map(key => ({
         filename: key,
         image: avatarImages[key],
@@ -28,8 +24,8 @@ export default function EditProfileScreen({ navigation }) {
         setLoading(true);
 
         try {
-            const response = await axios.post(`${API_BASE_URL}/api/jogadora/atualizar_perfil`, {
-                user_id: user.id,
+            // LÓGICA MUDADA (PUT para /jogadora/:id)
+            const response = await axios.put(`${API_BASE_URL}/${user.id}`, {
                 nome: nome,
                 avatar_filename: selectedAvatar
             });
@@ -40,7 +36,7 @@ export default function EditProfileScreen({ navigation }) {
             navigation.goBack();
 
         } catch (error) {
-            console.error("Erro ao salvar perfil:", error);
+            console.error("Erro ao salvar perfil (MockAPI):", error);
             Alert.alert("Erro", "Não foi possível salvar o perfil.");
         } finally {
             setLoading(false);

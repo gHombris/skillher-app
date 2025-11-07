@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, TextInput, Alert, SafeAreaView } from 'react-native'; // Importado Alert e SafeAreaView
+import { View, Text, Image, StyleSheet, TouchableOpacity, TextInput, Alert, SafeAreaView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext'; 
 
 const logoImage = require('../assets/Skill.png'); 
-const API_BASE_URL = 'http://192.168.15.173:5000'; // Confirme se este IP ainda é o seu
+const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // <<< MOCKAPI
 
 export default function RegisterScreen({ navigation }) {
   const [nome, setNome] = useState('');
@@ -31,25 +31,26 @@ export default function RegisterScreen({ navigation }) {
     }
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/register`, {
+      // LÓGICA MUDADA (POST direto para /jogadora com dados padrão)
+      const response = await axios.post(API_BASE_URL, {
         nome: nome,
         email: email,
-        password: password
+        password_hash: password, // O MockAPI vai salvar a senha como texto
+        // Valores padrão (para bater com o schema)
+        xp: 10,
+        rank: 'Ferro',
+        treinos_concluidos: 0,
+        sequencia: 0,
+        avatar_filename: 'ana.png' // Avatar padrão
       });
 
-      console.log("Registro bem-sucedido:", response.data);
+      console.log("Registro (MockAPI) bem-sucedido:", response.data);
       login(response.data);
-      
-      // ESTA É A CORREÇÃO: Navegar para 'App'
-      navigation.navigate('App'); 
+      navigation.navigate('App');
 
     } catch (error) {
-      if (error.response && error.response.data) {
-        Alert.alert("Erro no Registro", error.response.data.message);
-      } else {
-        Alert.alert("Erro de Conexão", "Não foi possível conectar ao servidor.");
-      }
-      console.error("Erro ao registrar:", error);
+      Alert.alert("Erro no Registro", "Não foi possível criar a conta no MockAPI.");
+      console.error("Erro ao registrar (MockAPI):", error);
     } finally {
       setLoading(false);
     }
@@ -105,18 +106,11 @@ export default function RegisterScreen({ navigation }) {
         
         <TouchableOpacity 
           style={styles.primaryButton}
-          onPress={handleRegister} // <--- CORRIGIDO
+          onPress={handleRegister}
           disabled={loading}
         >
           <Text style={styles.primaryButtonText}>{loading ? "Criando..." : "Criar uma conta"}</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.separatorText}>Ou</Text>
-
-        <TouchableOpacity style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Cadastre com o Google</Text>
-        </TouchableOpacity>
-        
+        </TouchableOpacity>        
         <View style={styles.footer}>
           <Text style={styles.footerText}>Já tem uma conta? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>

@@ -1,13 +1,67 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Button, Alert } from 'react-native'; // Adicionado Alert
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Button, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
 import XPFeedbackModal from '../components/XPFeedbackModal';
-import axios from 'axios'; // Importado axios
-import { useAuth } from '../context/AuthContext'; // Importado useAuth
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext'; 
 
-// URL da API
-const API_BASE_URL = 'http://192.168.15.173:5000'; // CONFIRME SE ESTE IP AINDA É O CORRETO
+const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // API Mockada
+
+// Lógica de Ranks (para o MockAPI)
+const RANK_XP_MAP = {
+    'Ferro': { proximo: 50 },
+    'Bronze': { proximo: 100 },
+    'Prata': { proximo: 200 },
+    'Ouro': { proximo: 400 },
+    'Rubi': { proximo: 800 },
+    'Ametista': { proximo: 1500 },
+    'Safira': { proximo: 2500 },
+    'Diamante': { proximo: 9999 },
+};
+
+// <<< NOVO: Lógica de checagem de Ranks e Conquistas (Frontend) >>>
+const checkProgresso = (currentUser, xpGanhos) => {
+    const novoXp = (currentUser.xp || 0) + xpGanhos;
+    const novosTreinos = (currentUser.treinos_concluidos || 0) + 1;
+    
+    // 1. Checa Ranks
+    let novoRank = currentUser.rank;
+    const rankAtualInfo = RANK_XP_MAP[currentUser.rank] || RANK_XP_MAP['Ferro'];
+    if (novoXp >= rankAtualInfo.proximo) {
+        // Encontra o próximo rank
+        const ranks = Object.keys(RANK_XP_MAP);
+        const indexAtual = ranks.indexOf(currentUser.rank);
+        if (indexAtual < ranks.length - 1) {
+            novoRank = ranks[indexAtual + 1];
+        }
+    }
+
+    // 2. Checa Conquistas
+    let conquistas = Array.isArray(currentUser.conquistas) ? [...currentUser.conquistas] : [];
+    
+    // Conquista: 1 treino
+    if (novosTreinos >= 1 && !conquistas.includes('treino_1')) {
+        conquistas.push('treino_1');
+        Alert.alert("Conquista Desbloqueada!", "Primeiro Treino Concluído!");
+    }
+    // Conquista: 10 treinos
+    if (novosTreinos >= 10 && !conquistas.includes('treino_10')) {
+        conquistas.push('treino_10');
+        Alert.alert("Conquista Desbloqueada!", "10 Treinos Concluídos! Continue assim!");
+    }
+    // TODO: Adicionar conquista de "Sequência 3 dias" (precisa de lógica de data)
+
+    return {
+        xp: novoXp,
+        treinos_concluidos: novosTreinos,
+        rank: novoRank,
+        conquistas: conquistas,
+        // (preserva o resto)
+        sequencia: currentUser.sequencia, 
+    };
+};
+
 
 const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -21,8 +75,6 @@ export default function TrainingPlayerScreen({ route, navigation }) {
     const [seconds, setSeconds] = useState(0);
     const [isModalVisible, setModalVisible] = useState(false);
     const intervalRef = useRef(null);
-
-    // Pegamos o usuário e a função de login (para atualizar o contexto)
     const { user, login } = useAuth();
 
     useEffect(() => {
@@ -37,10 +89,9 @@ export default function TrainingPlayerScreen({ route, navigation }) {
         setModalVisible(true);
     };
 
-    // Esta função agora salva na API
     const handleCloseModal = async () => {
         setModalVisible(false);
-        const xpGanhos = 10; // O XP que o modal informa
+        const xpGanhos = 10; 
 
         if (!user) {
             console.error("Usuário não logado, não é possível salvar o progresso.");
@@ -48,21 +99,21 @@ export default function TrainingPlayerScreen({ route, navigation }) {
             return;
         }
 
-        // Chama a API para salvar o progresso
+        // <<< LÓGICA MUDADA (PUT com verificação de Conquistas) >>>
         try {
-            console.log(`Salvando progresso para ID: ${user.id}, XP: ${xpGanhos}`);
-            const response = await axios.post(`${API_BASE_URL}/api/jogadora/atualizar_progresso`, {
-                user_id: user.id,
-                xp_ganho: xpGanhos
-            });
+            // 1. Calcula todo o progresso (XP, Ranks, Conquistas)
+            const progressoAtualizado = checkProgresso(user, xpGanhos);
+
+            // 2. Envia os dados atualizados para o MockAPI
+            const response = await axios.put(`${API_BASE_URL}/${user.id}`, progressoAtualizado);
             
-            // Atualiza o usuário no contexto global com os novos dados (novo XP, etc.)
+            // 3. Atualiza o usuário no contexto global
             login(response.data);
-            console.log("Progresso salvo com sucesso!");
+            console.log("Progresso salvo (MockAPI):", response.data);
 
         } catch (error) {
-            console.error("Erro ao salvar progresso:", error);
-            Alert.alert("Erro", "Não foi possível salvar seu progresso. Tente novamente.");
+            console.error("Erro ao salvar progresso (MockAPI):", error);
+            Alert.alert("Erro", "Não foi possível salvar seu progresso.");
         }
         
         navigation.goBack();
@@ -86,12 +137,7 @@ export default function TrainingPlayerScreen({ route, navigation }) {
                         style={styles.video}
                         source={exercise.videoPath} 
                         useNativeControls
-                        resizeMode={ResizeMode.CONTAIN} 
-                        onPlaybackStatusUpdate={status => {
-                            if (status.didJustFinish) {
-                                // (lógica de autoplay, etc. pode vir aqui)
-                            }
-                        }}
+                        resizeMode={ResizeMode.CONTAIN}
                     />
 
                     <View style={styles.timerContainer}>
@@ -109,13 +155,13 @@ export default function TrainingPlayerScreen({ route, navigation }) {
                 <XPFeedbackModal
                     visible={isModalVisible}
                     onClose={handleCloseModal}
-                    xp={10} // Valor fixo de XP
+                    xp={10}
                     time={formatTime(seconds)}
                 />
             </SafeAreaView>
         </LinearGradient>
     );
-} // <--- CHAVE DE FECHAMENTO DO COMPONENTE
+}
 
 
 const styles = StyleSheet.create({
@@ -125,7 +171,6 @@ const styles = StyleSheet.create({
         borderRadius: 15,
         backgroundColor: 'black', 
     },
-    
     header: { padding: 20 },
     backButton: { color: 'white', fontSize: 18, fontWeight: 'bold' },
     content: { flex: 1, paddingHorizontal: 20 },
