@@ -8,71 +8,93 @@ import { useAuth } from '../context/AuthContext';
 
 const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // API Mockada
 
-// Lógica de Ranks (para o MockAPI)
+// <<< NOVO: MAPA CANÔNICO E ORDEM DE RANKS PARA CONSISTÊNCIA >>>
+const RANK_ORDER = [
+    'Ferro', 'Bronze', 'Prata', 'Ouro', 'Rubi', 'Ametista', 'Safira', 'Diamante'
+];
+
 const RANK_XP_MAP = {
-    'Ferro': { proximo: 50 },
-    'Bronze': { proximo: 100 },
-    'Prata': { proximo: 200 },
-    'Ouro': { proximo: 400 },
-    'Rubi': { proximo: 800 },
-    'Ametista': { proximo: 1500 },
-    'Safira': { proximo: 2500 },
-    'Diamante': { proximo: 9999 },
-    'rank 1': { proximo: 50 },
-    'rank 2': { proximo: 100 },
-    'rank 3': { proximo: 100 },
-    'rank 4': { proximo: 50 },
-    'rank 5': { proximo: 50 },
+    'Ferro': { proximo: 50, anterior: 0 },
+    'Bronze': { proximo: 100, anterior: 50 },
+    'Prata': { proximo: 200, anterior: 100 },
+    'Ouro': { proximo: 400, anterior: 200 },
+    'Rubi': { proximo: 800, anterior: 400 },
+    'Ametista': { proximo: 1500, anterior: 800 },
+    'Safira': { proximo: 2500, anterior: 1500 },
+    'Diamante': { proximo: 9999, anterior: 2500 },
+};
+const CONQUISTAS_MAP = {
+    'treino_1': { icon: 'star', color: '#FFD700', titulo: 'Primeiro Treino' },
+    'treino_10': { icon: 'trophy', color: '#FFD700', titulo: '10 Treinos Concluídos' },
+    'sequencia_3': { icon: 'fire', color: '#FF4500', titulo: '3 Dias de Foco' },
+    'sequencia_7': { icon: 'certificate', color: '#FF4500', titulo: 'Sequência Semanal' },
+    'rank_up_1': { icon: 'level-up', color: '#00FFC2', titulo: 'Primeira Promoção' },
+    'rank_up_3': { icon: 'rocket', color: '#00FFC2', titulo: 'Impulso na Carreira' },
+    'rank_top_3': { icon: 'medal', color: '#C0C0C0', titulo: 'Top 3 Semanal' },
 };
 
 // <<< ATUALIZADO: Lógica de checagem de Ranks, Conquistas e Sequência >>>
 const checkProgresso = (currentUser, xpGanhos, lastTrainingDate) => {
     const novoXp = (currentUser.xp || 0) + xpGanhos;
     const novosTreinos = (currentUser.treinos_concluidos || 0) + 1;
-    
-    // 1. Checa Ranks
     let novoRank = currentUser.rank;
-    const rankAtualInfo = RANK_XP_MAP[currentUser.rank] || RANK_XP_MAP['Ferro'];
-    const currentRankKey = RANK_XP_MAP[currentUser.rank] ? currentUser.rank : 'Ferro';
-    const indexAtual = Object.keys(RANK_XP_MAP).indexOf(currentRankKey);
-
-    if (novoXp >= rankAtualInfo.proximo && indexAtual < Object.keys(RANK_XP_MAP).length - 1) {
-        novoRank = Object.keys(RANK_XP_MAP)[indexAtual + 1];
-    }
-
-    // 2. Checa Conquistas
-    let conquistas = Array.isArray(currentUser.conquistas) ? [...currentUser.conquistas] : [];
     
-    if (novosTreinos >= 1 && !conquistas.includes('treino_1')) {
-        conquistas.push('treino_1');
-        Alert.alert("Conquista Desbloqueada!", "Primeiro Treino Concluído!");
-    }
-    if (novosTreinos >= 10 && !conquistas.includes('treino_10')) {
-        conquistas.push('treino_10');
-        Alert.alert("Conquista Desbloqueada!", "10 Treinos Concluídos! Continue assim!");
-    }
+    const previousRank = currentUser.rank; 
+    let isRankUp = false;
     
-    // ==================================================
-    // CORREÇÃO REQUISITO 3: Lógica de Sequência Diária
-    // ==================================================
+    const currentRankKey = RANK_ORDER.includes(currentUser.rank) ? currentUser.rank : 'Ferro';
+    const rankAtualInfo = RANK_XP_MAP[currentRankKey];
+    const indexAtual = RANK_ORDER.indexOf(currentRankKey);
+
+    // 1. Checa Ranks (Promoção)
+    if (rankAtualInfo && novoXp >= rankAtualInfo.proximo && indexAtual < RANK_ORDER.length - 1) {
+        novoRank = RANK_ORDER[indexAtual + 1]; 
+        isRankUp = true; 
+        Alert.alert("PARABÉNS!", `Você foi promovida para o Rank ${novoRank}!`);
+    }
+
+    // 2. Lógica de Sequência Diária e Treino Concluído
     let novaSequencia = currentUser.sequencia || 0;
     const today = new Date().toDateString();
     
-    // Se a última data de treino não for hoje, incrementa a sequência
     if (lastTrainingDate !== today) {
-        // (Aqui uma lógica real de "ontem" seria mais complexa,
-        // mas para o MockAPI, "diferente de hoje" é o suficiente)
         novaSequencia++;
     }
-    // ==================================================
 
+    // 3. Checa Conquistas (ATUALIZADO SEM as conquistas removidas)
+    let conquistas = Array.isArray(currentUser.conquistas) ? [...currentUser.conquistas] : [];
+    
+    const checkAndAddConquista = (key, title) => {
+        if (!conquistas.includes(key)) {
+            conquistas.push(key);
+            Alert.alert("Conquista Desbloqueada!", title);
+        }
+    }
+    
+    // Conquistas de Treino
+    if (novosTreinos >= 1) checkAndAddConquista('treino_1', "Primeiro Treino Concluído!");
+    // if (novosTreinos >= 10) checkAndAddConquista('treino_10', "10 Treinos Concluídos! Continue assim!"); // REMOVIDO
+    
+    // Conquistas de Sequência
+    if (novaSequencia >= 3) checkAndAddConquista('sequencia_3', "3 Dias de Foco: Não perca o ritmo!");
+    if (novaSequencia >= 7) checkAndAddConquista('sequencia_7', "Sequência Semanal: Sua consistência é um diferencial!");
+    // if (novaSequencia >= 10) checkAndAddConquista('sequencia_10', "10 Dias de Fogo: Você está pegando fogo!"); // REMOVIDO
+
+    // Conquistas de Rank 
+    if (isRankUp) {
+        checkAndAddConquista('rank_up_1', `Primeira Promoção: Bem-vinda ao Rank ${novoRank}!`);
+        const newRankIndex = RANK_ORDER.indexOf(novoRank);
+        if (newRankIndex >= RANK_ORDER.indexOf('Prata')) { 
+            checkAndAddConquista('rank_up_3', "Impulso na Carreira: Você está subindo rápido!");
+        }
+    }
 
     return {
         xp: novoXp,
         treinos_concluidos: novosTreinos,
         rank: novoRank,
         conquistas: conquistas,
-        sequencia: novaSequencia, // <<< USA A NOVA SEQUÊNCIA
+        sequencia: novaSequencia, 
     };
 };
 
@@ -89,7 +111,6 @@ export default function TrainingPlayerScreen({ route, navigation }) {
     const [seconds, setSeconds] = useState(0);
     const [isModalVisible, setModalVisible] = useState(false);
     const intervalRef = useRef(null);
-    // 1. PEGAR AS NOVAS FUNÇÕES DO CONTEXTO
     const { user, login, updateStreak, getLastTrainingDate } = useAuth();
 
     useEffect(() => {

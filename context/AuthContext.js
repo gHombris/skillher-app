@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const USER_DATA_KEY = 'skillher-user-data';
-const LAST_TRAINING_KEY = 'skillher-last-training'; // <<< NOVO
+const LAST_TRAINING_KEY = 'skillher-last-training'; // <<< CHAVE PARA A DATA DO ÚLTIMO TREINO
 
 // 1. Criamos o Contexto
 const AuthContext = createContext(null);
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // <<< NOVA FUNÇÃO PARA ATUALIZAR A SEQUÊNCIA >>>
+    // FUNÇÃO PARA ATUALIZAR A DATA DA SEQUÊNCIA/ÚLTIMO TREINO
     const updateStreak = () => {
         try {
             const today = new Date().toDateString();
@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // <<< NOVA FUNÇÃO PARA CHECAR A SEQUÊNCIA >>>
+    // FUNÇÃO PARA CHECAR A ÚLTIMA DATA DE TREINO
     const getLastTrainingDate = () => {
         try {
             return localStorage.getItem(LAST_TRAINING_KEY);
@@ -73,6 +73,32 @@ export const AuthProvider = ({ children }) => {
             return null;
         }
     };
+    
+    // <<< NOVO: FUNÇÃO PARA CALCULAR OS DIAS DESDE O ÚLTIMO TREINO >>>
+    const getDaysSinceLastTraining = () => {
+        try {
+            const lastTrainingDateString = localStorage.getItem(LAST_TRAINING_KEY);
+            if (!lastTrainingDateString) return 0; // Assume 0 se nunca treinou
+
+            const lastTrainingDate = new Date(lastTrainingDateString);
+            const today = new Date();
+
+            // Seta os horários para meia-noite para comparar apenas as datas
+            lastTrainingDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            
+            // Calcula a diferença em milissegundos
+            const diffTime = Math.abs(today.getTime() - lastTrainingDate.getTime());
+            // Converte para dias (arredondando para cima)
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+            return diffDays;
+        } catch (e) {
+            console.error("Erro ao calcular dias desde o último treino:", e);
+            return 0; 
+        }
+    };
+    
 
     const value = {
         user,
@@ -80,8 +106,9 @@ export const AuthProvider = ({ children }) => {
         logout,
         isAuthenticated: !!user,
         isLoading,
-        updateStreak, // <<< EXPÕE A FUNÇÃO
-        getLastTrainingDate, // <<< EXPÕE A FUNÇÃO
+        updateStreak, 
+        getLastTrainingDate, 
+        getDaysSinceLastTraining, // <<< EXPOSTO
     };
 
     return (

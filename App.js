@@ -103,9 +103,12 @@ function AppNavigator() {
                 listeners={({ navigation }) => ({
                     tabPress: (e) => {
                         e.preventDefault(); 
+                        
+                        // CORREÇÃO: Força o Stack do Perfil a voltar à tela inicial,
+                        // limpando o parâmetro 'userId' que carrega o perfil de terceiros.
                         navigation.navigate('Dashboard', { 
                             screen: 'ProfileDashboard',
-                            params: undefined, // Limpa os params para voltar ao seu perfil
+                            params: { userId: undefined }, // Garante que o Dashboard use o ID do usuário logado.
                         });
                     },
                 })}
@@ -113,17 +116,16 @@ function AppNavigator() {
             <AppTabs.Screen 
                 name="Training" 
                 component={TrainingNavigator} 
-                options={{ tabBarLabel: 'Treinar' }} // <<< CORRIGIDO
+                options={{ tabBarLabel: 'Treinar' }} 
             />
             <AppTabs.Screen 
                 name="Ranking" 
                 component={RankingScreen} 
-                options={{ tabBarLabel: 'Ranking' }} // <<< CORRIGIDO
+                options={{ tabBarLabel: 'Ranking' }} 
             />
         </AppTabs.Navigator>
     );
 }
-
 
 // --- LÓGICA DE NAVEGAÇÃO CORRIGIDA ---
 function RootNavigator() {
