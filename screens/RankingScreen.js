@@ -3,15 +3,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, Image, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext'; // 1. Importar useAuth
-import { avatarImages } from './DashboardScreen'; // Importar mapa de avatares
+import { useAuth } from '../context/AuthContext'; 
+import { avatarImages } from './DashboardScreen'; 
 
 const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora';
 
 // Componente da Linha da Jogadora
 const PlayerRow = ({ item, navigation }) => (
-    // Passa o 'item.id' para a rota do Dashboard
-    <TouchableOpacity onPress={() => navigation.navigate('Dashboard', { userId: item.id })}>
+    // ==================================================
+    // CORREÇÃO DO BUG "VISITAR PERFIL"
+    // ==================================================
+    // Precisamos especificar a Stack ('Dashboard'), a Tela ('ProfileDashboard')
+    // e os parâmetros ('params')
+    <TouchableOpacity onPress={() => navigation.navigate('Dashboard', { 
+            screen: 'ProfileDashboard', 
+            params: { userId: item.id } 
+        })}>
+    {/* =============================================== */}
         <View style={styles.playerRow}>
             <Text style={styles.playerRank}>{item.rank_position}</Text>
             <Image source={item.avatar_img} style={styles.playerAvatar} />
@@ -33,29 +41,26 @@ const ZoneDivider = ({ title, icon }) => (
 export default function RankingScreen({ navigation }) {
     const [rankingData, setRankingData] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { user } = useAuth(); // 2. Pegar o usuário logado do contexto
+    const { user } = useAuth(); 
 
     useEffect(() => {
-        // 3. Não busca se o usuário não estiver carregado
-        if (!user || !user.rank) {
-            setLoading(false);
-            return;
-        }
+        // Roda a busca quando a tela entra em foco
+        const unsubscribe = navigation.addListener('focus', async () => {
+            if (!user || !user.rank) {
+                setLoading(false);
+                return;
+            }
 
-        const fetchRanking = async () => {
             try {
                 setLoading(true);
                 
-                // 4. CORREÇÃO REQUISITO 2: Filtra a API pelo rank do usuário
                 const userRank = user.rank;
+                // Busca jogadores COM O MESMO RANK, ordenados por XP
                 const response = await axios.get(`${API_BASE_URL}?rank=${userRank}&sortBy=xp&order=desc`);
                 
                 let players = response.data;
-                
-                // Limita a 16 jogadores (como no Duolingo)
                 players = players.slice(0, 16); 
                 
-                // 5. LÓGICA DE ZONAS DINÂMICA (Top 3 = Promoção, 3 Últimos = Rebaixamento)
                 const totalPlayers = players.length;
                 const processedData = [];
 
@@ -70,8 +75,8 @@ export default function RankingScreen({ navigation }) {
                 );
                 processedData.push({ id: 'promo_divider', type: 'zone', title: 'Zona promoção', icon: '⬆️' });
 
-                // Meio da Tabela (Posição 4 até antepenúltimo)
-                const relegationStartIndex = Math.max(3, totalPlayers - 3); // Garante que não sobreponha
+                // Meio da Tabela
+                const relegationStartIndex = Math.max(3, totalPlayers - 3); 
                 processedData.push(
                     ...players.slice(3, relegationStartIndex).map((p, i) => ({ 
                         ...p, 
@@ -81,7 +86,7 @@ export default function RankingScreen({ navigation }) {
                     }))
                 );
 
-                // Zona de Rebaixamento (Últimos 3, se houver mais de 3 jogadores)
+                // Zona de Rebaixamento
                 if (totalPlayers > 3) {
                     processedData.push({ id: 'rebaixamento_divider', type: 'zone', title: 'Zona rebaixamento', icon: '⬇️' });
                     processedData.push(
@@ -100,10 +105,10 @@ export default function RankingScreen({ navigation }) {
             } finally {
                 setLoading(false);
             }
-        };
-        // 6. Roda a busca quando o rank do usuário mudar
-        fetchRanking();
-    }, [user]); // Depende do objeto 'user'
+        });
+
+        return unsubscribe;
+    }, [navigation, user]); // Depende do 'user' (objeto) e 'navigation'
 
     const renderItem = ({ item }) => {
         if (item.type === 'zone') {
@@ -120,7 +125,6 @@ export default function RankingScreen({ navigation }) {
         );
     }
     
-    // Mensagem se o usuário não estiver carregado
     if (!user) {
          return (
             <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.loadingContainer}>
@@ -133,7 +137,6 @@ export default function RankingScreen({ navigation }) {
         <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.container}>
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
-                    {/* Título dinâmico baseado no Rank */}
                     <Text style={styles.headerTitle}>Ranking Semanal (Liga {user.rank})</Text>
                 </View>
 
@@ -145,7 +148,7 @@ export default function RankingScreen({ navigation }) {
                         ItemSeparatorComponent={() => <View style={styles.separator} />}
                         ListEmptyComponent={
                             <View>
-                                <Text style={styles.emptyText}>Nenhum jogador encontrado neste rank.</Text>
+                                <Text style={styles.emptyText}>Sua liga ainda está enchendo. Chame suas amigas!</Text>
                             </View>
                         }
                     />
@@ -159,25 +162,26 @@ export default function RankingScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1, padding: 20 },
-    loadingContainer: { // Adicionado para telas de loading/erro
+    loadingContainer: { 
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    errorText: { // Adicionado
+    errorText: {
         color: 'white', 
         fontSize: 16, 
         textAlign: 'center',
         paddingHorizontal: 20,
     },
-    emptyText: { // Adicionado
+    emptyText: {
         color: 'white',
         textAlign: 'center',
         marginTop: 20,
         fontStyle: 'italic',
+        fontSize: 16,
     },
     header: { alignItems: 'center', marginBottom: 20 },
-    headerTitle: { color: 'white', fontSize: 26, fontWeight: 'bold' },
+    headerTitle: { color: 'white', fontSize: 26, fontWeight: 'bold', textAlign: 'center' },
     card: { flex: 1, backgroundColor: 'rgba(30, 0, 50, 0.6)', borderRadius: 15, padding: 15 },
     
     playerRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },

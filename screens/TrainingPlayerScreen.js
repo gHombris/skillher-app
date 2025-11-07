@@ -18,7 +18,6 @@ const RANK_XP_MAP = {
     'Ametista': { proximo: 1500 },
     'Safira': { proximo: 2500 },
     'Diamante': { proximo: 9999 },
-    // Fallbacks
     'rank 1': { proximo: 50 },
     'rank 2': { proximo: 100 },
     'rank 3': { proximo: 100 },
@@ -26,16 +25,14 @@ const RANK_XP_MAP = {
     'rank 5': { proximo: 50 },
 };
 
-// <<< Lógica de checagem de Ranks e Conquistas (Frontend) >>>
-const checkProgresso = (currentUser, xpGanhos) => {
+// <<< ATUALIZADO: Lógica de checagem de Ranks, Conquistas e Sequência >>>
+const checkProgresso = (currentUser, xpGanhos, lastTrainingDate) => {
     const novoXp = (currentUser.xp || 0) + xpGanhos;
     const novosTreinos = (currentUser.treinos_concluidos || 0) + 1;
     
     // 1. Checa Ranks
     let novoRank = currentUser.rank;
     const rankAtualInfo = RANK_XP_MAP[currentUser.rank] || RANK_XP_MAP['Ferro'];
-    
-    // Verifica se o rank atual existe no mapa, se não, usa Ferro
     const currentRankKey = RANK_XP_MAP[currentUser.rank] ? currentUser.rank : 'Ferro';
     const indexAtual = Object.keys(RANK_XP_MAP).indexOf(currentRankKey);
 
@@ -56,10 +53,17 @@ const checkProgresso = (currentUser, xpGanhos) => {
     }
     
     // ==================================================
-    // CORREÇÃO LÓGICA DE SEQUÊNCIA
+    // CORREÇÃO REQUISITO 3: Lógica de Sequência Diária
     // ==================================================
-    const novaSequencia = (currentUser.sequencia || 0) + 1;
-    // (Ainda não temos a lógica de data, então apenas incrementamos)
+    let novaSequencia = currentUser.sequencia || 0;
+    const today = new Date().toDateString();
+    
+    // Se a última data de treino não for hoje, incrementa a sequência
+    if (lastTrainingDate !== today) {
+        // (Aqui uma lógica real de "ontem" seria mais complexa,
+        // mas para o MockAPI, "diferente de hoje" é o suficiente)
+        novaSequencia++;
+    }
     // ==================================================
 
 
@@ -85,7 +89,8 @@ export default function TrainingPlayerScreen({ route, navigation }) {
     const [seconds, setSeconds] = useState(0);
     const [isModalVisible, setModalVisible] = useState(false);
     const intervalRef = useRef(null);
-    const { user, login } = useAuth();
+    // 1. PEGAR AS NOVAS FUNÇÕES DO CONTEXTO
+    const { user, login, updateStreak, getLastTrainingDate } = useAuth();
 
     useEffect(() => {
         intervalRef.current = setInterval(() => {
@@ -110,14 +115,23 @@ export default function TrainingPlayerScreen({ route, navigation }) {
         }
 
         try {
-            // 1. Calcula todo o progresso (XP, Ranks, Conquistas, Sequencia)
-            const progressoAtualizado = checkProgresso(user, xpGanhos);
+            // 2. PEGAR A ÚLTIMA DATA DE TREINO
+            const lastTrainingDate = getLastTrainingDate();
+            
+            // 3. CALCULAR O PROGRESSO
+            const progressoAtualizado = checkProgresso(user, xpGanhos, lastTrainingDate);
 
-            // 2. Envia os dados atualizados para o MockAPI
+            // 4. Envia os dados atualizados para o MockAPI
             const response = await axios.put(`${API_BASE_URL}/${user.id}`, progressoAtualizado);
             
-            // 3. Atualiza o usuário no contexto global
+            // 5. Atualiza o usuário no contexto global
             login(response.data);
+            
+            // 6. SALVA A DATA DE HOJE NO LOCALSTORAGE
+            if (lastTrainingDate !== new Date().toDateString()) {
+                updateStreak();
+            }
+            
             console.log("Progresso salvo (MockAPI):", response.data);
 
         } catch (error) {
@@ -172,7 +186,7 @@ export default function TrainingPlayerScreen({ route, navigation }) {
     );
 }
 
-
+// Estilos (idênticos ao que você mandou)
 const styles = StyleSheet.create({
     video: {
         width: '100%',

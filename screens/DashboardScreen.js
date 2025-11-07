@@ -6,10 +6,7 @@ import { useAuth } from '../context/AuthContext';
 
 const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // API Mockada
 
-// ==================================================
-// CORREÇÃO BUG AVATARES: Mapas limpos
-// Contêm apenas os nomes de arquivos REAIS.
-// ==================================================
+// Mapas limpos
 export const avatarImages = {
     'emilly.png': require('../assets/avatares/emilly.png'),
     'ana.png': require('../assets/avatares/ana.png'),
@@ -20,8 +17,11 @@ export const avatarImages = {
     'monique.png': require('../assets/avatares/monique.png'),
     'luana_pereira.png': require('../assets/avatares/luana.png'),
     'marta-futebol-brasil.png': require('../assets/avatares/marta-futebol-brasil.png'),
-    // Os avatares genéricos da API foram removidos daqui
-    // para limpar a tela de EditProfile.
+    'avatar_filename 1': require('../assets/avatares/ana.png'),
+    'avatar_filename 2': require('../assets/avatares/ester.png'),
+    'avatar_filename 3': require('../assets/avatares/maria.png'),
+    'avatar_filename 4': require('../assets/avatares/tatiana.png'),
+    'avatar_filename 5': require('../assets/avatares/monique.png'),
 };
 
 export const rankIconImages = {
@@ -34,9 +34,8 @@ export const rankIconImages = {
     'safira.png': require('../assets/ranks/safira.png'),
     'diamante.png': require('../assets/ranks/diamante.png'),
 };
-// ==================================================
 
-// Mapa de XP (Lógica do frontend)
+// Mapa de XP
 const RANK_XP_MAP = {
     'Ferro': { proximo: 50, anterior: 0 },
     'Bronze': { proximo: 100, anterior: 50 },
@@ -46,7 +45,6 @@ const RANK_XP_MAP = {
     'Ametista': { proximo: 1500, anterior: 800 },
     'Safira': { proximo: 2500, anterior: 1500 },
     'Diamante': { proximo: 9999, anterior: 2500 },
-    // Fallbacks
     'rank 1': { proximo: 50, anterior: 0 },
     'rank 2': { proximo: 100, anterior: 50 },
     'rank 3': { proximo: 100, anterior: 50 },
@@ -67,53 +65,58 @@ export default function DashboardScreen({ route, navigation }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Lógica de busca de dados
-    const fetchPlayerData = useCallback(async () => {
-        // CORREÇÃO BUG 1: O ID a ser mostrado é o da rota (se existir)
-        // ou o do usuário logado.
-        const userIdToDisplay = route.params?.userId || loggedInUser?.id;
-
-        if (!userIdToDisplay) {
-            setLoading(false);
-            setError("Nenhum usuário para exibir.");
-            return;
-        }
-
-        try {
-            // CORREÇÃO "TICK": Limpa dados antigos
-            setPlayerData(null); 
-            setLoading(true);
-            setError(null);
-            
-            const response = await axios.get(`${API_BASE_URL}/${userIdToDisplay}`);
-            setPlayerData(response.data);
-
-            if (String(response.data.id) === String(loggedInUser?.id)) {
-                login(response.data);
-            }
-        } catch (err) {
-            setError("Não foi possível carregar o perfil.");
-            console.error("Erro ao buscar da API (MockAPI):", err);
-        } finally {
-            setLoading(false);
-        }
-    // CORREÇÃO BUG 1: A dependência DEVE ser 'loggedInUser.id' (primitivo)
-    }, [route.params?.userId, loggedInUser?.id, login]); 
-
-
-    // Listener para recarregar a tela (Correção Stale XP)
+    // ==================================================
+    // CORREÇÃO BUG: "Visitar Perfil" e "Stale XP"
+    // ==================================================
     useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => {
-            fetchPlayerData();
-        });
-        return unsubscribe;
-    }, [navigation, fetchPlayerData]);
+        // Roda toda vez que a tela entra em foco
+        const unsubscribe = navigation.addListener('focus', async () => {
+            // 1. Decide qual ID buscar (o da rota ou o logado)
+            //    'route.params?.userId' só existe se viemos do Ranking.
+            //    Se viemos da TabBar, 'route.params' será undefined.
+            const userIdToDisplay = route.params?.userId || loggedInUser?.id;
 
-    // CORREÇÃO BUG 2: Logout
+            if (!userIdToDisplay) {
+                setLoading(false);
+                setError("Nenhum usuário para exibir.");
+                return;
+            }
+
+            // 2. Limpa o 'userId' da rota DEPOIS de usá-lo.
+            //    Isso garante que, se sairmos e voltarmos pelo TabBar,
+            //    ele carregue o *nosso* perfil, e não o último visitado.
+            if (route.params?.userId) {
+                navigation.setParams({ userId: undefined });
+            }
+
+            try {
+                setPlayerData(null); 
+                setLoading(true);
+                setError(null);
+                
+                const response = await axios.get(`${API_BASE_URL}/${userIdToDisplay}`);
+                setPlayerData(response.data);
+
+                if (String(response.data.id) === String(loggedInUser?.id)) {
+                    login(response.data);
+                }
+            } catch (err) {
+                setError("Não foi possível carregar o perfil.");
+                console.error("Erro ao buscar da API (MockAPI):", err);
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        return unsubscribe;
+    // Monitora o ID do usuário logado e a navegação
+    }, [navigation, loggedInUser?.id, login, route.params?.userId]); 
+    // ==================================================
+
+    // Lógica de Logout (Corrigida)
     const handleLogout = () => {
         const doLogout = () => {
-            logout(); // Limpa o AuthContext e o localStorage
-            // Manda o usuário de volta para a tela de Welcome
+            logout(); 
             navigation.reset({
                 index: 0,
                 routes: [{ name: 'Welcome' }],
@@ -130,16 +133,14 @@ export default function DashboardScreen({ route, navigation }) {
                 "Você tem certeza que deseja sair?",
                 [
                     { text: "Cancelar", style: "cancel" },
-                    { 
-                        text: "Sair", 
-                        style: "destructive", 
-                        onPress: doLogout
-                    }
+                    { text: "Sair", style: "destructive", onPress: doLogout }
                 ]
             );
         }
     };
 
+    // ... (Restante do código idêntico ao anterior)
+    
     if (loading) {
         return (
             <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.loadingContainer}>
@@ -244,7 +245,7 @@ export default function DashboardScreen({ route, navigation }) {
     );
 }
 
-// ESTILOS (O mesmo código que você enviou)
+// ESTILOS
 const styles = StyleSheet.create({
     loadingContainer: { 
         flex: 1,

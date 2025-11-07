@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const USER_DATA_KEY = 'skillher-user-data';
+const LAST_TRAINING_KEY = 'skillher-last-training'; // <<< NOVO
 
 // 1. Criamos o Contexto
 const AuthContext = createContext(null);
@@ -47,8 +48,29 @@ export const AuthProvider = ({ children }) => {
             setUser(null);
             // Remove do storage seguro
              localStorage.removeItem(USER_DATA_KEY);
+             localStorage.removeItem(LAST_TRAINING_KEY); // <<< LIMPA A DATA DO TREINO
         } catch (e) {
             console.error("Erro ao remover usuário do storage:", e);
+        }
+    };
+
+    // <<< NOVA FUNÇÃO PARA ATUALIZAR A SEQUÊNCIA >>>
+    const updateStreak = () => {
+        try {
+            const today = new Date().toDateString();
+            localStorage.setItem(LAST_TRAINING_KEY, today);
+        } catch (e) {
+             console.error("Erro ao salvar data do treino:", e);
+        }
+    };
+
+    // <<< NOVA FUNÇÃO PARA CHECAR A SEQUÊNCIA >>>
+    const getLastTrainingDate = () => {
+        try {
+            return localStorage.getItem(LAST_TRAINING_KEY);
+        } catch (e) {
+            console.error("Erro ao ler data do treino:", e);
+            return null;
         }
     };
 
@@ -57,7 +79,9 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         isAuthenticated: !!user,
-        isLoading 
+        isLoading,
+        updateStreak, // <<< EXPÕE A FUNÇÃO
+        getLastTrainingDate, // <<< EXPÕE A FUNÇÃO
     };
 
     return (
