@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { SafeAreaView, View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios'; 
 import { useAuth } from '../context/AuthContext'; 
 
 const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // API Mockada
 
-// MAPA DE AVATARES (Exportado)
+// ==================================================
+// CORREÇÃO BUG AVATARES: Mapas limpos
+// Contêm apenas os nomes de arquivos REAIS.
+// ==================================================
 export const avatarImages = {
     'emilly.png': require('../assets/avatares/emilly.png'),
     'ana.png': require('../assets/avatares/ana.png'),
@@ -17,9 +19,11 @@ export const avatarImages = {
     'andreia.png': require('../assets/avatares/andreia.png'),
     'monique.png': require('../assets/avatares/monique.png'),
     'luana_pereira.png': require('../assets/avatares/luana.png'),
+    'marta-futebol-brasil.png': require('../assets/avatares/marta-futebol-brasil.png'),
+    // Os avatares genéricos da API foram removidos daqui
+    // para limpar a tela de EditProfile.
 };
 
-// MAPA DE RANKS (Exportado e em minúsculas)
 export const rankIconImages = {
     'ferro.png': require('../assets/ranks/ferro.png'),
     'bronze.png': require('../assets/ranks/bronze.png'),
@@ -30,6 +34,7 @@ export const rankIconImages = {
     'safira.png': require('../assets/ranks/safira.png'),
     'diamante.png': require('../assets/ranks/diamante.png'),
 };
+// ==================================================
 
 // Mapa de XP (Lógica do frontend)
 const RANK_XP_MAP = {
@@ -41,6 +46,12 @@ const RANK_XP_MAP = {
     'Ametista': { proximo: 1500, anterior: 800 },
     'Safira': { proximo: 2500, anterior: 1500 },
     'Diamante': { proximo: 9999, anterior: 2500 },
+    // Fallbacks
+    'rank 1': { proximo: 50, anterior: 0 },
+    'rank 2': { proximo: 100, anterior: 50 },
+    'rank 3': { proximo: 100, anterior: 50 },
+    'rank 4': { proximo: 50, anterior: 0 },
+    'rank 5': { proximo: 50, anterior: 0 },
 };
 
 // Mapa de Conquistas
@@ -56,50 +67,77 @@ export default function DashboardScreen({ route, navigation }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
+    // Lógica de busca de dados
+    const fetchPlayerData = useCallback(async () => {
+        // CORREÇÃO BUG 1: O ID a ser mostrado é o da rota (se existir)
+        // ou o do usuário logado.
         const userIdToDisplay = route.params?.userId || loggedInUser?.id;
 
         if (!userIdToDisplay) {
-            setPlayerData(null);
             setLoading(false);
+            setError("Nenhum usuário para exibir.");
             return;
         }
 
-        const fetchPlayerData = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                const response = await axios.get(`${API_BASE_URL}/${userIdToDisplay}`);
-                setPlayerData(response.data);
+        try {
+            // CORREÇÃO "TICK": Limpa dados antigos
+            setPlayerData(null); 
+            setLoading(true);
+            setError(null);
+            
+            const response = await axios.get(`${API_BASE_URL}/${userIdToDisplay}`);
+            setPlayerData(response.data);
 
-                if (userIdToDisplay === loggedInUser?.id) {
-                    login(response.data);
-                }
-
-            } catch (err) {
-                setError("Não foi possível carregar o perfil.");
-                console.error("Erro ao buscar da API (MockAPI):", err);
-            } finally {
-                setLoading(false);
+            if (String(response.data.id) === String(loggedInUser?.id)) {
+                login(response.data);
             }
+        } catch (err) {
+            setError("Não foi possível carregar o perfil.");
+            console.error("Erro ao buscar da API (MockAPI):", err);
+        } finally {
+            setLoading(false);
+        }
+    // CORREÇÃO BUG 1: A dependência DEVE ser 'loggedInUser.id' (primitivo)
+    }, [route.params?.userId, loggedInUser?.id, login]); 
+
+
+    // Listener para recarregar a tela (Correção Stale XP)
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            fetchPlayerData();
+        });
+        return unsubscribe;
+    }, [navigation, fetchPlayerData]);
+
+    // CORREÇÃO BUG 2: Logout
+    const handleLogout = () => {
+        const doLogout = () => {
+            logout(); // Limpa o AuthContext e o localStorage
+            // Manda o usuário de volta para a tela de Welcome
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'Welcome' }],
+            });
         };
 
-        fetchPlayerData();
-    }, [route.params?.userId, loggedInUser]); 
-
-    const handleLogout = () => {
-        Alert.alert(
-            "Sair da conta",
-            "Você tem certeza que deseja sair?",
-            [
-                { text: "Cancelar", style: "cancel" },
-                { 
-                    text: "Sair", 
-                    style: "destructive", 
-                    onPress: () => logout()
-                }
-            ]
-        );
+        if (Platform.OS === 'web') {
+            if (window.confirm("Você tem certeza que deseja sair?")) {
+                doLogout();
+            }
+        } else {
+            Alert.alert(
+                "Sair da conta",
+                "Você tem certeza que deseja sair?",
+                [
+                    { text: "Cancelar", style: "cancel" },
+                    { 
+                        text: "Sair", 
+                        style: "destructive", 
+                        onPress: doLogout
+                    }
+                ]
+            );
+        }
     };
 
     if (loading) {
@@ -110,22 +148,25 @@ export default function DashboardScreen({ route, navigation }) {
         );
     }
     
-    if (!playerData) {
+    if (error || !playerData) {
          return (
             <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.loadingContainer}>
-                <Text style={{color: 'white', fontSize: 16, textAlign: 'center'}}>
+                <Text style={styles.errorText}>
                     {error || "Usuário não encontrado."}
                 </Text>
             </LinearGradient>
         );
     }
 
-    const isOwnProfile = playerData.id === loggedInUser?.id;
+    const isOwnProfile = String(playerData.id) === String(loggedInUser?.id);
     const rankInfo = RANK_XP_MAP[playerData.rank] || RANK_XP_MAP['Ferro'];
-    const xpNoRankAtual = playerData.xp - rankInfo.anterior;
+    const xpNoRankAtual = (playerData.xp || 0) - rankInfo.anterior;
     const xpTotalDoRank = rankInfo.proximo - rankInfo.anterior;
     const xpPercentage = (xpNoRankAtual / xpTotalDoRank) * 100;
-    const rankIconKey = playerData.rank.toLowerCase() + '.png';
+    
+    const rankIconKey = (playerData.rank || 'Ferro').toLowerCase() + '.png';
+    const rankIconImg = rankIconImages[rankIconKey] || rankIconImages['ferro.png'];
+    const avatarImg = avatarImages[playerData.avatar_filename] || avatarImages['ana.png'];
     const conquistasDoJogador = Array.isArray(playerData.conquistas) ? playerData.conquistas : [];
     
     return (
@@ -138,7 +179,7 @@ export default function DashboardScreen({ route, navigation }) {
                     
                     <Text style={styles.headerTitle}>{isOwnProfile ? "Bem-vinda de volta!" : `Perfil de ${playerData.nome}`}</Text>
 
-                    <Image source={avatarImages[playerData.avatar_filename]} style={styles.avatar} /> 
+                    <Image source={avatarImg} style={styles.avatar} /> 
                     <View style={styles.nameContainer}>
                         <Text style={styles.name}>{playerData.nome}</Text>
                         
@@ -151,7 +192,7 @@ export default function DashboardScreen({ route, navigation }) {
 
                     <View style={styles.card}>
                         <View style={styles.rankInfo}>
-                            <Image source={rankIconImages[rankIconKey]} style={styles.rankIcon} />
+                            <Image source={rankIconImg} style={styles.rankIcon} />
                             <View style={styles.rankTextContainer}>
                                 <Text style={styles.rankText}>Rank: {playerData.rank}</Text>
                                 <Text style={styles.xpText}>{playerData.xp} XP (Próx. Rank: {rankInfo.proximo} XP)</Text>
@@ -203,23 +244,27 @@ export default function DashboardScreen({ route, navigation }) {
     );
 }
 
+// ESTILOS (O mesmo código que você enviou)
 const styles = StyleSheet.create({
     loadingContainer: { 
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
+    errorText: {
+        color: 'white', 
+        fontSize: 16, 
+        textAlign: 'center',
+        paddingHorizontal: 20,
+    },
     container: { flex: 1 }, 
-    safeArea: { flex: 1 }, // Estilo 'safeArea' não é mais usado, 'container' é usado em seu lugar
-    
-    // <<< CORREÇÃO DO SCROLL >>>
+    safeArea: { flex: 1 },
     scrollContent: { 
         alignItems: 'center', 
         paddingHorizontal: 20, 
         paddingVertical: 20, 
-        paddingBottom: 60, // Espaço extra no final
-        flexGrow: 1, // <<< Garante que o container possa crescer
-        // Removido 'justifyContent: 'flex-start'' que estava quebrando o scroll
+        paddingBottom: 60, 
+        flexGrow: 1, 
     },
     headerTitle: { color: 'white', fontSize: 26, fontWeight: 'bold', marginBottom: 20 },
     avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: 'white', marginBottom: 10 },

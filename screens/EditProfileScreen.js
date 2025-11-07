@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Imag
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { avatarImages } from './DashboardScreen'; // Importa o mapa
+import { avatarImages } from './DashboardScreen'; // Importa o mapa LIMPO
 
 const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // <<< MOCKAPI
 
@@ -14,6 +14,8 @@ export default function EditProfileScreen({ navigation }) {
     const [selectedAvatar, setSelectedAvatar] = useState(user.avatar_filename);
     const [loading, setLoading] = useState(false);
 
+    // Esta lista agora será preenchida com o mapa LIMPO importado,
+    // corrigindo o bug dos clones.
     const avatarList = Object.keys(avatarImages).map(key => ({
         filename: key,
         image: avatarImages[key],
@@ -24,7 +26,9 @@ export default function EditProfileScreen({ navigation }) {
         setLoading(true);
 
         try {
-            // LÓGICA MUDADA (PUT para /jogadora/:id)
+            // Esta lógica está CORRETA.
+            // Ela falhava antes porque 'user.id' era '8' (inválido).
+            // Quando o AuthContext tiver o ID correto (ex: '6'), isto funcionará.
             const response = await axios.put(`${API_BASE_URL}/${user.id}`, {
                 nome: nome,
                 avatar_filename: selectedAvatar
@@ -93,7 +97,7 @@ export default function EditProfileScreen({ navigation }) {
         </LinearGradient>
     );
 }
-
+// Estilos (O mesmo código que você enviou)
 const styles = StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1 },

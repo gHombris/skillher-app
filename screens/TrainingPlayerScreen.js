@@ -18,9 +18,15 @@ const RANK_XP_MAP = {
     'Ametista': { proximo: 1500 },
     'Safira': { proximo: 2500 },
     'Diamante': { proximo: 9999 },
+    // Fallbacks
+    'rank 1': { proximo: 50 },
+    'rank 2': { proximo: 100 },
+    'rank 3': { proximo: 100 },
+    'rank 4': { proximo: 50 },
+    'rank 5': { proximo: 50 },
 };
 
-// <<< NOVO: Lógica de checagem de Ranks e Conquistas (Frontend) >>>
+// <<< Lógica de checagem de Ranks e Conquistas (Frontend) >>>
 const checkProgresso = (currentUser, xpGanhos) => {
     const novoXp = (currentUser.xp || 0) + xpGanhos;
     const novosTreinos = (currentUser.treinos_concluidos || 0) + 1;
@@ -28,37 +34,41 @@ const checkProgresso = (currentUser, xpGanhos) => {
     // 1. Checa Ranks
     let novoRank = currentUser.rank;
     const rankAtualInfo = RANK_XP_MAP[currentUser.rank] || RANK_XP_MAP['Ferro'];
-    if (novoXp >= rankAtualInfo.proximo) {
-        // Encontra o próximo rank
-        const ranks = Object.keys(RANK_XP_MAP);
-        const indexAtual = ranks.indexOf(currentUser.rank);
-        if (indexAtual < ranks.length - 1) {
-            novoRank = ranks[indexAtual + 1];
-        }
+    
+    // Verifica se o rank atual existe no mapa, se não, usa Ferro
+    const currentRankKey = RANK_XP_MAP[currentUser.rank] ? currentUser.rank : 'Ferro';
+    const indexAtual = Object.keys(RANK_XP_MAP).indexOf(currentRankKey);
+
+    if (novoXp >= rankAtualInfo.proximo && indexAtual < Object.keys(RANK_XP_MAP).length - 1) {
+        novoRank = Object.keys(RANK_XP_MAP)[indexAtual + 1];
     }
 
     // 2. Checa Conquistas
     let conquistas = Array.isArray(currentUser.conquistas) ? [...currentUser.conquistas] : [];
     
-    // Conquista: 1 treino
     if (novosTreinos >= 1 && !conquistas.includes('treino_1')) {
         conquistas.push('treino_1');
         Alert.alert("Conquista Desbloqueada!", "Primeiro Treino Concluído!");
     }
-    // Conquista: 10 treinos
     if (novosTreinos >= 10 && !conquistas.includes('treino_10')) {
         conquistas.push('treino_10');
         Alert.alert("Conquista Desbloqueada!", "10 Treinos Concluídos! Continue assim!");
     }
-    // TODO: Adicionar conquista de "Sequência 3 dias" (precisa de lógica de data)
+    
+    // ==================================================
+    // CORREÇÃO LÓGICA DE SEQUÊNCIA
+    // ==================================================
+    const novaSequencia = (currentUser.sequencia || 0) + 1;
+    // (Ainda não temos a lógica de data, então apenas incrementamos)
+    // ==================================================
+
 
     return {
         xp: novoXp,
         treinos_concluidos: novosTreinos,
         rank: novoRank,
         conquistas: conquistas,
-        // (preserva o resto)
-        sequencia: currentUser.sequencia, 
+        sequencia: novaSequencia, // <<< USA A NOVA SEQUÊNCIA
     };
 };
 
@@ -99,9 +109,8 @@ export default function TrainingPlayerScreen({ route, navigation }) {
             return;
         }
 
-        // <<< LÓGICA MUDADA (PUT com verificação de Conquistas) >>>
         try {
-            // 1. Calcula todo o progresso (XP, Ranks, Conquistas)
+            // 1. Calcula todo o progresso (XP, Ranks, Conquistas, Sequencia)
             const progressoAtualizado = checkProgresso(user, xpGanhos);
 
             // 2. Envia os dados atualizados para o MockAPI
