@@ -1,16 +1,36 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+// Usamos localStorage para este protótipo (web/mobile). Em um build nativo,
+// seria trocado por 'expo-secure-store' ou 'AsyncStorage'.
 
+/**
+ * @summary Chave para salvar os dados do usuário no storage.
+ */
 const USER_DATA_KEY = 'skillher-user-data';
-const LAST_TRAINING_KEY = 'skillher-last-training'; // <<< CHAVE PARA A DATA DO ÚLTIMO TREINO
+/**
+ * @summary Chave para salvar a data do último treino (para a lógica de Sequência/Inatividade).
+ */
+const LAST_TRAINING_KEY = 'skillher-last-training';
 
-// 1. Criamos o Contexto
+/**
+ * @summary Cria o Contexto de Autenticação.
+ * Este contexto armazena o estado global do usuário (se está logado, dados do perfil)
+ * e fornece funções para interagir com esse estado (login, logout, updateStreak).
+ */
 const AuthContext = createContext(null);
 
-// 2. Criamos o "Provedor" que vai guardar a informação
+/**
+ * @summary Provedor do Contexto de Autenticação.
+ * Envolve a aplicação (no App.js) e gerencia o estado do usuário, 
+ * persistindo os dados no localStorage para manter a sessão.
+ */
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null); // O usuário começa como nulo (deslogado)
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true); // Controla a tela de loading inicial
 
+    /**
+     * @summary Efeito que carrega os dados do usuário do localStorage ao iniciar o app.
+     * Isso garante que o usuário permaneça logado se já tiver uma sessão ativa.
+     */
     useEffect(() => {
         const loadUserFromStorage =  () => {
             try {
@@ -23,7 +43,7 @@ export const AuthProvider = ({ children }) => {
             } catch (e) {
                 console.error("Erro ao carregar usuário do storage:", e);
             } finally {
-                // 3. Termina o loading
+                // 3. Termina o loading (mesmo se der erro)
                 setIsLoading(false);
             }
         };
@@ -31,30 +51,38 @@ export const AuthProvider = ({ children }) => {
         loadUserFromStorage();
     }, []);
 
+    /**
+     * @summary Função de Login.
+     * Atualiza o estado global do 'user' e salva os dados no storage.
+     * @param {object} userData - Os dados do usuário vindos da API (Login/Register/Dashboard).
+     */
     const login =  (userData) => {
         try {
-            // Salva o usuário no estado
             setUser(userData);
-            // Salva o usuário no storage seguro
-             localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+            localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
         } catch (e) {
             console.error("Erro ao salvar usuário no storage:", e);
         }
     };
 
+    /**
+     * @summary Função de Logout.
+     * Limpa o estado global do 'user' e remove os dados do storage.
+     */
     const logout = () => {
         try {
-            // Remove do estado
             setUser(null);
-            // Remove do storage seguro
-             localStorage.removeItem(USER_DATA_KEY);
-             localStorage.removeItem(LAST_TRAINING_KEY); // <<< LIMPA A DATA DO TREINO
+            localStorage.removeItem(USER_DATA_KEY);
+            localStorage.removeItem(LAST_TRAINING_KEY); // Limpa a data do treino
         } catch (e) {
             console.error("Erro ao remover usuário do storage:", e);
         }
     };
 
-    // FUNÇÃO PARA ATUALIZAR A DATA DA SEQUÊNCIA/ÚLTIMO TREINO
+    /**
+     * @summary Salva a data de 'hoje' no storage.
+     * Chamado quando um treino é concluído.
+     */
     const updateStreak = () => {
         try {
             const today = new Date().toDateString();
@@ -64,7 +92,9 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // FUNÇÃO PARA CHECAR A ÚLTIMA DATA DE TREINO
+    /**
+     * @summary Retorna a data (string) do último treino salvo.
+     */
     const getLastTrainingDate = () => {
         try {
             return localStorage.getItem(LAST_TRAINING_KEY);
@@ -74,7 +104,11 @@ export const AuthProvider = ({ children }) => {
         }
     };
     
-    // <<< NOVO: FUNÇÃO PARA CALCULAR OS DIAS DESDE O ÚLTIMO TREINO >>>
+    /**
+     * @summary Calcula quantos dias se passaram desde o último treino salvo.
+     * Usado para a lógica de Rebaixamento por inatividade.
+     * @returns {number} Número de dias desde o último treino.
+     */
     const getDaysSinceLastTraining = () => {
         try {
             const lastTrainingDateString = localStorage.getItem(LAST_TRAINING_KEY);
@@ -87,9 +121,7 @@ export const AuthProvider = ({ children }) => {
             lastTrainingDate.setHours(0, 0, 0, 0);
             today.setHours(0, 0, 0, 0);
             
-            // Calcula a diferença em milissegundos
             const diffTime = Math.abs(today.getTime() - lastTrainingDate.getTime());
-            // Converte para dias (arredondando para cima)
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
 
             return diffDays;
@@ -99,7 +131,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
     
-
+    // Valores expostos pelo Provedor para o resto do app
     const value = {
         user,
         login,
@@ -108,7 +140,7 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         updateStreak, 
         getLastTrainingDate, 
-        getDaysSinceLastTraining, // <<< EXPOSTO
+        getDaysSinceLastTraining, 
     };
 
     return (
@@ -118,7 +150,10 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-// 3. Criamos um "Hook" (gancho) para facilitar o uso do contexto
+/**
+ * @summary Hook customizado para consumir o Contexto de Autenticação.
+ * Facilita o acesso aos dados do usuário (ex: `const { user } = useAuth();`).
+ */
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {

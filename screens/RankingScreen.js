@@ -2,39 +2,25 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { SafeAreaView, View, Text, StyleSheet, FlatList, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext'; 
 import { rankIconImages, avatarImages } from './DashboardScreen'; 
-import { useAuth } from '../context/AuthContext';
 
 const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // API Mockada
 
-const CONQUISTAS_MAP = {
-    'treino_1': { icon: 'star', color: '#FFD700', titulo: 'Primeiro Treino' },
-    'sequencia_3': { icon: 'fire', color: '#FF4500', titulo: '3 Dias de Foco' },
-    'sequencia_7': { icon: 'certificate', color: '#FF4500', titulo: 'Sequência Semanal' },
-    'rank_up_1': { icon: 'level-up', color: '#00FFC2', titulo: 'Primeira Promoção' },
-    'rank_up_3': { icon: 'rocket', color: '#00FFC2', titulo: 'Impulso na Carreira' },
-};
 // =========================================================================
 // CRONÔMETRO DO RANKING
 // =========================================================================
 
 /**
- * Calcula o tempo restante em milissegundos até a próxima Segunda-feira à 00:00:00.
+ * @summary Calcula o tempo restante em milissegundos até a próxima Segunda-feira à 00:00:00.
  */
 const getTimeUntilNextReset = () => {
     const now = new Date();
     const nextReset = new Date(now);
     
-    // Calcula quantos dias faltam para a próxima Segunda-feira (1). 
-    // Onde: 0=Dom, 1=Seg, ..., 6=Sáb.
     let daysToAdd = (1 - now.getDay() + 7) % 7;
+    if (daysToAdd === 0) daysToAdd = 7;
     
-    // Se hoje é Segunda (daysToAdd === 0), o reset será na próxima Segunda (7 dias).
-    if (daysToAdd === 0) {
-        daysToAdd = 7;
-    }
-    
-    // Adiciona os dias e zera o tempo para 00:00:00 (início do dia)
     nextReset.setDate(now.getDate() + daysToAdd);
     nextReset.setHours(0, 0, 0, 0); 
 
@@ -43,7 +29,7 @@ const getTimeUntilNextReset = () => {
 };
 
 /**
- * Formata milissegundos em string (X d Yh Zm Ws).
+ * @summary Formata milissegundos em string (X d Yh Zm Ws).
  */
 const formatTimeDiff = (milliseconds) => {
     if (milliseconds <= 0) return 'Rank Resetando...';
@@ -59,13 +45,18 @@ const formatTimeDiff = (milliseconds) => {
 
 // =========================================================================
 
-
+/**
+ * @summary Componente de item individual para a lista do Ranking.
+ * É memorizado (React.memo) para otimização da FlatList.
+ */
 const RankingItem = React.memo(({ item, index, navigation }) => {
     const rankIconKey = (item.rank || 'Ferro').toLowerCase() + '.png';
     const rankIconImg = rankIconImages[rankIconKey] || rankIconImages['ferro.png'];
-    const avatarImg = avatarImages[item.avatar_filename] || avatarImages['ana.png'];
+    const avatarImg = avatarImages[item.avatar_filename] || avatarImages['avatar1.png'];
     
-    // FUNÇÃO CORRIGIDA PARA NAVEGAÇÃO ANINHADA
+    /**
+     * @summary Navega para o perfil do usuário clicado (Navegação Aninhada).
+     */
     const handleNavigateToProfile = () => {
      navigation.navigate('Dashboard', { 
             screen: 'ProfileDashboard', 
@@ -76,13 +67,10 @@ const RankingItem = React.memo(({ item, index, navigation }) => {
     return (
         <TouchableOpacity 
             style={styles.itemContainer}
-            // ATUALIZAÇÃO: Chamando a função corrigida
             onPress={handleNavigateToProfile}
         >
             <Text style={styles.rankText}>#{index + 1}</Text>
-            
             <Image source={avatarImg} style={styles.avatar} />
-            
             <View style={styles.nameRankContainer}>
                 <Text style={styles.nameText}>{item.nome}</Text>
                 <View style={styles.rankBadge}>
@@ -90,7 +78,6 @@ const RankingItem = React.memo(({ item, index, navigation }) => {
                     <Text style={styles.rankNameText}>{item.rank}</Text>
                 </View>
             </View>
-
             <View style={styles.xpContainer}>
                 <Text style={styles.xpLabel}>XP</Text>
                 <Text style={styles.xpValue}>{item.xp || 0}</Text>
@@ -99,24 +86,31 @@ const RankingItem = React.memo(({ item, index, navigation }) => {
     );
 });
 
+/**
+ * @summary Tela do Ranking Semanal.
+ * Exibe a classificação dos jogadores filtrada pelo Rank (Liga) do usuário logado.
+ * Inclui um cronômetro para o reset semanal.
+ */
 export default function RankingScreen({ navigation }) {
     const [ranking, setRanking] = useState([]);
     const [loading, setLoading] = useState(true);
-    // Inicializa o estado com o tempo restante
     const [timeRemaining, setTimeRemaining] = useState(getTimeUntilNextReset()); 
-    const { user, isLoading: userLoading, login } = useAuth();
+    const { user, isLoading: userLoading, login } = useAuth(); // 'login' é usado pela lógica de conquista
 
-    // Hook para o Cronômetro
+    /**
+     * @summary Hook para o Cronômetro. Atualiza a cada segundo.
+     */
     useEffect(() => {
-        // Atualiza o tempo restante a cada segundo
         const interval = setInterval(() => {
             setTimeRemaining(getTimeUntilNextReset());
         }, 1000);
-
-        // Limpa o intervalo quando a tela é desmontada
         return () => clearInterval(interval);
     }, []);
 
+    /**
+     * @summary Busca os dados do ranking na API.
+     * Filtra pelo Rank do usuário logado e ordena por XP.
+     */
     const fetchRanking = useCallback(async () => {
         if (!user || !user.rank) return; 
 
@@ -124,12 +118,14 @@ export default function RankingScreen({ navigation }) {
             setLoading(true);
             const userRank = user.rank;
             
-            // Busca e ordena
+            // Busca e ordena (filtrando pelo Rank do usuário)
             const response = await axios.get(`${API_BASE_URL}?rank=${userRank}&sortBy=xp&order=desc`);
             const sortedRanking = response.data;
             
             setRanking(sortedRanking);
             
+            // (A lógica de conquista 'rank_top_3' foi removida conforme solicitado)
+
         } catch (error) {
             console.error("Erro ao buscar ranking:", error);
         } finally {
@@ -137,21 +133,24 @@ export default function RankingScreen({ navigation }) {
         }
     }, [user, login]);
 
+    // Recarrega o ranking quando a tela entra em foco
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', fetchRanking);
+        if (user && !userLoading) {
+            fetchRanking();
+        }
         return unsubscribe;
-    }, [navigation, fetchRanking]);
+    }, [navigation, fetchRanking, user, userLoading]);
     
-    // Se o tempo restante for zero (Resetando...), recarrega o ranking automaticamente
+    // Recarrega o ranking quando o timer zera (simula o reset)
     useEffect(() => {
-        // Checa se o tempo é zero ou muito próximo
         if (timeRemaining <= 1000 && !loading) {
             fetchRanking(); 
         }
     }, [timeRemaining, loading, fetchRanking]);
     
     
-    if (loading) {
+    if (loading || userLoading || !user) {
         return (
             <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="white" />
@@ -163,14 +162,13 @@ export default function RankingScreen({ navigation }) {
         <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.container}>
             <SafeAreaView style={styles.container}>
                 
-                <Text style={styles.headerTitle}>Ranking Semanal</Text>
+                <Text style={styles.headerTitle}>Ranking Semanal (Liga {user.rank})</Text>
                 
                 {/* O NOVO CRONÔMETRO */}
                 <View style={styles.countdownContainer}>
                     <Text style={styles.countdownTitle}>Próximo Reset em:</Text>
                     <Text style={styles.countdownText}>{formatTimeDiff(timeRemaining)}</Text>
                 </View>
-
 
                 <FlatList
                     data={ranking}
@@ -205,8 +203,6 @@ const styles = StyleSheet.create({
         marginTop: 20,
         marginBottom: 10,
     },
-    
-    // ESTILOS ESPECÍFICOS DO CRONÔMETRO
     countdownContainer: {
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
         padding: 10,
@@ -215,7 +211,7 @@ const styles = StyleSheet.create({
         marginBottom: 15,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(0, 255, 194, 0.5)', // Cor Skill Her
+        borderColor: 'rgba(0, 255, 194, 0.5)', 
     },
     countdownTitle: {
         color: 'white',
@@ -224,12 +220,11 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     countdownText: {
-        color: '#00FFC2', // Destaque para o tempo
+        color: '#00FFC2', 
         fontSize: 20,
         fontWeight: 'bold',
         marginTop: 5,
     },
-
     listContent: {
         paddingHorizontal: 10,
         paddingBottom: 20,

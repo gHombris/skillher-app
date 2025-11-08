@@ -1,5 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { SafeAreaView, View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
+import { 
+    SafeAreaView, 
+    View, 
+    Text, 
+    Image, 
+    StyleSheet, 
+    TouchableOpacity, 
+    ScrollView, 
+    ActivityIndicator, 
+    Alert, 
+    Platform 
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios'; 
 import { useAuth } from '../context/AuthContext'; 
@@ -11,7 +22,7 @@ const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // 
 // 1. Mapeamento de Assets e Constantes
 // =========================================================================
 
-// Mapeamento de Avatares (mantido)
+// Mapeamento de Avatares (para 'EditProfileScreen' e 'RankingScreen')
 export const avatarImages = {
     'avatar1.png': require('../assets/avatares/avatar1.png'),
     'avatar2.png': require('../assets/avatares/avatar2.png'),
@@ -33,19 +44,19 @@ export const rankIconImages = {
     'diamante.png': require('../assets/ranks/diamante.png'),
 };
 
-// Importação dos Novos Ícones (AJUSTE O CAMINHO SE NECESSÁRIO)
+// Importação dos Novos Ícones de assets
 const iconEditar = require('../assets/icons/editar.png');
-const iconCheckmark = require('../assets/icons/treino.png'); // Treinos Concluídos
-const iconFogo0 = require('../assets/icons/fogo0.png');           // Sem Sequência / Bola Cinza
-const iconFogo1 = require('../assets/icons/fogo1.png');           // Sequência 1-14
-const iconFogo15 = require('../assets/icons/fogo15.png');         // Sequência 15+
+const iconCheckmark = require('../assets/icons/treino.png'); 
+const iconFogo0 = require('../assets/icons/fogo0.png');           
+const iconFogo1 = require('../assets/icons/fogo1.png');           
+const iconFogo15 = require('../assets/icons/fogo15.png');         
 
-// Ordem Canônica dos Ranks
+// Ordem Canônica dos Ranks (Define a progressão)
 const RANK_ORDER = [
     'Ferro', 'Bronze', 'Prata', 'Ouro', 'Rubi', 'Ametista', 'Safira', 'Diamante'
 ];
 
-// Mapa de XP e Limites para Promoção/Rebaixamento
+// Mapa de XP (Define os limites de cada rank)
 const RANK_XP_MAP = {
     'Ferro': { proximo: 50, anterior: 0 },
     'Bronze': { proximo: 100, anterior: 50 },
@@ -57,45 +68,50 @@ const RANK_XP_MAP = {
     'Diamante': { proximo: 9999, anterior: 2500 },
 };
 
-// Mapeamento de Conquistas (FontAwesome como substituto visual dos Emojis)
+// Mapeamento de Conquistas (Define a exibição)
 const CONQUISTAS_MAP = {
     'treino_1': { icon: 'star', color: '#FFD700', titulo: 'Primeiro Treino' },
     'treino_10': { icon: 'trophy', color: '#FFD700', titulo: '10 Treinos Concluídos' },
     'sequencia_3': { icon: 'fire', color: '#FF4500', titulo: '3 Dias de Foco' },
+    'sequencia_7': { icon: 'certificate', color: '#FF4500', titulo: 'Sequência Semanal' },
     'rank_up_1': { icon: 'level-up', color: '#00FFC2', titulo: 'Primeira Promoção' },
     'rank_up_3': { icon: 'rocket', color: '#00FFC2', titulo: 'Impulso na Carreira' },
 };
 
 
 // =========================================================================
-// 2. Lógica de Rebaixamento
+// 2. Lógica de Rebaixamento (Gamificação)
 // =========================================================================
 
+/**
+ * @summary Verifica se o usuário deve ser rebaixado por inatividade e XP baixo.
+ * Esta função é chamada ao carregar o dashboard do usuário logado.
+ * @param {object} currentUser - O objeto do usuário atual.
+ * @param {function} getDaysSinceLastTraining - Função do AuthContext.
+ * @param {function} login - Função do AuthContext para atualizar o usuário.
+ */
 const checkRelegation = async (currentUser, getDaysSinceLastTraining, login) => {
     const { id, xp, rank } = currentUser;
     
-    // Regra de Inatividade Mínima: 7 dias
+    // Regra: 7 dias ou mais de inatividade
     const INACTIVITY_THRESHOLD_DAYS = 7; 
     const daysInactive = getDaysSinceLastTraining();
 
-    // 1. Não rebaixa se for Ferro ou se estiver ativo (menos de 7 dias)
+    // 1. Não rebaixa se for 'Ferro' (rank mínimo) ou se estiver ativo
     if (rank === 'Ferro' || daysInactive < INACTIVITY_THRESHOLD_DAYS) {
         return; 
     }
 
     const currentRankIndex = RANK_ORDER.indexOf(rank);
-    
-    if (currentRankIndex <= 0) return; 
+    if (currentRankIndex <= 0) return; // Rank não encontrado ou já é Ferro
 
     const rankInfo = RANK_XP_MAP[rank];
 
-    // 2. Regra de XP: XP abaixo do limite inferior do Rank
+    // 2. Regra de XP: XP atual deve estar abaixo do limite mínimo do rank
     const xpLimiteInferior = rankInfo.anterior; 
 
     if (xp < xpLimiteInferior) {
         const newRank = RANK_ORDER[currentRankIndex - 1]; // Rank anterior
-        
-        console.log(`[REBAIXAMENTO] Jogadora ${id} rebaixada de ${rank} para ${newRank} (XP: ${xp} < ${xpLimiteInferior})`);
         
         try {
             // 3. Atualiza o MockAPI com o novo Rank
@@ -103,7 +119,7 @@ const checkRelegation = async (currentUser, getDaysSinceLastTraining, login) => 
                 rank: newRank,
             });
             
-            // 4. Atualiza o contexto (logar o novo usuário/perfil)
+            // 4. Atualiza o contexto global e notifica o usuário
             login(response.data);
             Alert.alert(
                 "Atenção!", 
@@ -122,32 +138,40 @@ const checkRelegation = async (currentUser, getDaysSinceLastTraining, login) => 
 // 3. Componente Principal
 // =========================================================================
 
+/**
+ * @summary Tela principal do Dashboard (Perfil).
+ * Exibe o progresso do usuário logado ou o perfil de outro usuário (vindo do Ranking).
+ * Gerencia a lógica de rebaixamento e logout.
+ */
 export default function DashboardScreen({ route, navigation }) {
     const { user: loggedInUser, logout, login, getDaysSinceLastTraining } = useAuth(); 
-    const [playerData, setPlayerData] = useState(null);
+    const [playerData, setPlayerData] = useState(null); // Dados do perfil sendo exibido
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-
-    // Lógica para o ícone de Sequência (Bola de Fogo)
+    /**
+     * @summary Retorna o asset de imagem correto para a Sequência (Streak).
+     */
     const getStreakIcon = (sequencia) => {
         if (!sequencia || sequencia === 0) {
-            return iconFogo0; // Bola Cinza/Sem Fogo
+            return iconFogo0; // Bola Cinza
         } else if (sequencia >= 1 && sequencia < 15) {
-            return iconFogo1; // Fogo Laranja (1 a 14 dias)
+            return iconFogo1; // Fogo Laranja
         } else { // Sequência >= 15
-            return iconFogo15; // Fogo Vermelho (15+ dias)
+            return iconFogo15; // Fogo Vermelho
         }
     };
 
-
+    /**
+     * @summary Hook principal de carregamento de dados.
+     * Disparado quando a tela entra em foco (pela Tab ou navegação).
+     * Decide se deve carregar o perfil próprio (e checar rebaixamento)
+     * ou o perfil de terceiros (vindo do route.params.userId).
+     */
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', async () => {
             
-            // 1. Armazena o ID vindo dos parâmetros (se houver, vindo do Ranking)
             const userIdFromParams = route.params?.userId; 
-            
-            // 2. Determina o ID a ser exibido: prioriza o da rota, senão usa o logado.
             const userIdToDisplay = userIdFromParams || loggedInUser?.id;
 
             if (!userIdToDisplay) {
@@ -161,35 +185,29 @@ export default function DashboardScreen({ route, navigation }) {
                 setLoading(true);
                 setError(null);
                 
-                // Busca os dados mais recentes do perfil na API
                 const response = await axios.get(`${API_BASE_URL}/${userIdToDisplay}`);
                 let updatedData = response.data;
-
-                // Identifica se é o perfil da jogadora logada.
                 const isOwnProfile = String(response.data.id) === String(loggedInUser?.id);
                 
                 if (isOwnProfile) {
-                    // Executa a checagem de rebaixamento (apenas para o próprio perfil)
+                    // Se for o perfil próprio, roda a lógica de rebaixamento
                     await checkRelegation(updatedData, getDaysSinceLastTraining, login);
                     
-                    // Rebusca os dados APÓS a checagem para garantir o estado final
+                    // Rebusca os dados APÓS a checagem (caso tenha sido rebaixado)
                     const recheckResponse = await axios.get(`${API_BASE_URL}/${userIdToDisplay}`);
                     updatedData = recheckResponse.data;
-                    login(updatedData); // Garante que o estado de contexto está atualizado
+                    login(updatedData); // Atualiza o contexto
                 }
                 
-                setPlayerData(updatedData); // Exibe o perfil (próprio ou de terceiros)
+                setPlayerData(updatedData); // Define o perfil a ser exibido
 
-                // Limpeza de Parâmetros da Rota: 
-                // Essencial para garantir que clicar na Tab 'Dashboard' volte ao próprio perfil.
+                // Limpa o parâmetro da rota (se existia)
                 if (userIdFromParams) {
                     navigation.setParams({ userId: undefined });
                 }
 
-
             } catch (err) {
                 setError("Não foi possível carregar o perfil.");
-                console.error("Erro ao buscar da API (MockAPI) com check de rebaixamento:", err);
             } finally {
                 setLoading(false);
             }
@@ -198,10 +216,13 @@ export default function DashboardScreen({ route, navigation }) {
         return unsubscribe;
     }, [navigation, loggedInUser?.id, login, route.params?.userId, getDaysSinceLastTraining]); 
 
-
+    /**
+     * @summary Processa o logout do usuário com confirmação.
+     */
     const handleLogout = () => {
         const doLogout = () => {
             logout(); 
+            // Reseta a navegação para a tela de Boas-Vindas
             navigation.reset({
                 index: 0,
                 routes: [{ name: 'Welcome' }],
@@ -209,13 +230,10 @@ export default function DashboardScreen({ route, navigation }) {
         };
 
         if (Platform.OS === 'web') {
-            if (window.confirm("Você tem certeza que deseja sair?")) {
-                doLogout();
-            }
+            if (window.confirm("Você tem certeza que deseja sair?")) doLogout();
         } else {
             Alert.alert(
-                "Sair da conta",
-                "Você tem certeza que deseja sair?",
+                "Sair da conta", "Você tem certeza que deseja sair?",
                 [
                     { text: "Cancelar", style: "cancel" },
                     { text: "Sair", style: "destructive", onPress: doLogout }
@@ -224,7 +242,7 @@ export default function DashboardScreen({ route, navigation }) {
         }
     };
     
-    
+    // Telas de Loading e Erro
     if (loading) {
         return (
             <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.loadingContainer}>
@@ -243,16 +261,16 @@ export default function DashboardScreen({ route, navigation }) {
         );
     }
 
+    // Variáveis de renderização
     const isOwnProfile = String(playerData.id) === String(loggedInUser?.id);
     const rankInfo = RANK_XP_MAP[playerData.rank] || RANK_XP_MAP['Ferro'];
     const xpNoRankAtual = (playerData.xp || 0) - rankInfo.anterior;
     const xpTotalDoRank = rankInfo.proximo - rankInfo.anterior;
     const xpPercentage = (xpNoRankAtual / xpTotalDoRank) * 100;
     
-    // Converte o nome do rank para minúsculo para buscar o asset
     const rankIconKey = (playerData.rank || 'Ferro').toLowerCase() + '.png';
     const rankIconImg = rankIconImages[rankIconKey] || rankIconImages['ferro.png'];
-    const avatarImg = avatarImages[playerData.avatar_filename] || avatarImages['ana.png'];
+    const avatarImg = avatarImages[playerData.avatar_filename] || avatarImages['avatar1.png'];
     const conquistasDoJogador = Array.isArray(playerData.conquistas) ? playerData.conquistas : [];
     
     return (
@@ -267,16 +285,16 @@ export default function DashboardScreen({ route, navigation }) {
 
                     <Image source={avatarImg} style={styles.avatar} /> 
                     <View style={styles.nameContainer}>
-            <           Text style={styles.name}>{playerData.nome}</Text>
-            
+                        <Text style={styles.name}>{playerData.nome}</Text>
+                        
                         {isOwnProfile && (
                             <TouchableOpacity onPress={() => navigation.navigate('EditProfile')}>
-                                {/* SUBSTITUI O EMOJI PELA IMAGEM IMPORTADA */}
                                 <Image source={iconEditar} style={styles.editIconImage} />
-                                </TouchableOpacity>
-                         )}
+                            </TouchableOpacity>
+                        )}
                     </View>
 
+                    {/* Card de Rank e XP */}
                     <View style={styles.card}>
                         <View style={styles.rankInfo}>
                             <Image source={rankIconImg} style={styles.rankIcon} />
@@ -290,35 +308,35 @@ export default function DashboardScreen({ route, navigation }) {
                         </View>
                     </View>
 
+                    {/* Cards de Estatísticas (Treinos e Sequência) */}
                     <View style={styles.statsContainer}>
-                        {/* BOX 1: TREINOS CONCLUÍDOS (Ícone Customizado) */}
                         <View style={styles.statBox}>
                             <Image source={iconCheckmark} style={styles.statIconImage} /> 
                             <Text style={styles.statLabel}>Treinos Concluídos: {playerData.treinos_concluidos}</Text>
                         </View>
-
-                        {/* BOX 2: SEQUÊNCIA (Lógica Bola de Fogo) */}
                         <View style={styles.statBox}>
                             <Image source={getStreakIcon(playerData.sequencia)} style={styles.statIconImage} /> 
                             <Text style={styles.statLabel}>Sequência: {playerData.sequencia}</Text>
                         </View>
                     </View>
 
+                    {/* Card de Conquistas */}
                     <View style={styles.card}>
                         <Text style={styles.conquistasTitle}>Conquistas</Text>
                         <View style={styles.conquistasGrid}>
                             {conquistasDoJogador.length > 0 ? (
                                 conquistasDoJogador.map((key) => {
                                     const conquista = CONQUISTAS_MAP[key];
+                                    if (!conquista) return null; // Ignora conquistas não mapeadas
                                     return (
                                         <View style={styles.conquistaItem} key={key}>
                                             <FontAwesome 
-                                                name={conquista?.icon || 'question-circle'} 
+                                                name={conquista.icon} 
                                                 size={40} 
-                                                color={conquista?.color || 'white'}
+                                                color={conquista.color}
                                                 style={styles.conquistaIcon} 
                                             />
-                                            <Text style={styles.conquistaText}>{conquista?.titulo || key}</Text>
+                                            <Text style={styles.conquistaText}>{conquista.titulo}</Text>
                                         </View>
                                     );
                                 })
@@ -328,6 +346,7 @@ export default function DashboardScreen({ route, navigation }) {
                         </View>
                     </View>
 
+                    {/* Botão de Logout (Apenas no perfil próprio) */}
                     {isOwnProfile && (
                         <TouchableOpacity 
                             style={styles.logoutButton}
@@ -343,7 +362,7 @@ export default function DashboardScreen({ route, navigation }) {
 }
 
 // =========================================================================
-// 4. Estilos
+// 4. Estilos (Revertidos para StyleSheet)
 // =========================================================================
 
 const styles = StyleSheet.create({
@@ -388,7 +407,6 @@ const styles = StyleSheet.create({
     statsContainer: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 15 },
     statBox: { backgroundColor: 'rgba(30, 0, 50, 0.6)', borderRadius: 15, padding: 20, width: '48%', alignItems: 'center' },
     
-    // NOVO ESTILO PARA IMAGEM/ICON (Sequência e Treinos Concluídos)
     statIconImage: { 
         width: 40, 
         height: 40, 
@@ -410,7 +428,6 @@ const styles = StyleSheet.create({
         width: 80,
     },
     conquistaIcon: {
-        // Estilos FontAwesome
         marginBottom: 5,
     },
     conquistaText: {

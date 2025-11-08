@@ -5,14 +5,23 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext'; 
 
 const logoImage = require('../assets/Skill.png'); 
-const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // <<< MOCKAPI
+const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // MOCKAPI
 
+/**
+ * @summary Tela de Login.
+ * Permite que usuários existentes acessem suas contas.
+ */
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login } = useAuth(); // Hook para chamar a função de login global
 
+  /**
+   * @summary Processa a tentativa de login.
+   * Valida os campos e faz uma requisição GET (filtrada) para o MockAPI.
+   * Se o usuário for encontrado, salva no AuthContext e navega para o App.
+   */
   const handleLogin = async () => {
     if (loading) return;
     setLoading(true);
@@ -28,18 +37,15 @@ export default function LoginScreen({ navigation }) {
       const response = await axios.get(API_BASE_URL, {
         params: {
           email: email,
-          password_hash: password // O MockAPI vai salvar a senha como "password_hash"
+          password_hash: password // MockAPI não faz hash, compara texto puro
         }
       });
 
-      // O MockAPI retorna um array. Se o array tiver 1 usuário, o login bateu.
       if (response.data && response.data.length > 0) {
         const user = response.data[0];
-        console.log("Login (MockAPI) bem-sucedido:", user);
         login(user); // Salva no contexto
         navigation.navigate('App'); // Navega para o app
       } else {
-        // Se o array voltar vazio, as credenciais estão erradas.
         Alert.alert("Erro no Login", "Credenciais inválidas.");
       }
 
@@ -61,7 +67,7 @@ export default function LoginScreen({ navigation }) {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.backButton}>←</Text>
           </TouchableOpacity>
-          <Image source={logoImage} style={styles.logo} />
+          <Image source={logoImage} style={styles.logo} resizeMode="contain" />
         </View>
 
         <Text style={styles.title}>Entre na sua conta</Text>
@@ -113,9 +119,6 @@ const styles = StyleSheet.create({
     input: { backgroundColor: 'rgba(255, 255, 255, 0.2)', color: 'white', padding: 15, borderRadius: 10, fontSize: 16, marginBottom: 15 },
     primaryButton: { backgroundColor: '#00FFC2', paddingVertical: 15, borderRadius: 30, alignItems: 'center', marginVertical: 10 },
     primaryButtonText: { color: '#000', fontSize: 18, fontWeight: 'bold' },
-    separatorText: { color: 'white', textAlign: 'center', marginVertical: 15 },
-    secondaryButton: { backgroundColor: 'white', paddingVertical: 15, borderRadius: 30, alignItems: 'center' },
-    secondaryButtonText: { color: '#333', fontSize: 18, fontWeight: 'bold' },
     footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
     footerText: { color: 'white', fontSize: 16 },
     linkText: { color: '#00FFC2', fontSize: 16, fontWeight: 'bold' }

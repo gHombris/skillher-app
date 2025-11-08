@@ -3,10 +3,14 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Imag
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { avatarImages } from './DashboardScreen'; // Importa o mapa LIMPO
+import { avatarImages } from './DashboardScreen'; // Importa o mapa de avatares
 
-const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // <<< MOCKAPI
+const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // MOCKAPI
 
+/**
+ * @summary Tela de Edição de Perfil.
+ * Permite que o usuário logado altere seu nome e avatar.
+ */
 export default function EditProfileScreen({ navigation }) {
     const { user, login } = useAuth(); 
 
@@ -14,21 +18,22 @@ export default function EditProfileScreen({ navigation }) {
     const [selectedAvatar, setSelectedAvatar] = useState(user.avatar_filename);
     const [loading, setLoading] = useState(false);
 
-    // Esta lista agora será preenchida com o mapa LIMPO importado,
-    // corrigindo o bug dos clones.
+    // Converte o objeto de avatares em uma lista para o .map()
     const avatarList = Object.keys(avatarImages).map(key => ({
         filename: key,
         image: avatarImages[key],
     }));
 
+    /**
+     * @summary Salva as alterações do perfil.
+     * Faz uma requisição PUT para o MockAPI com o novo nome e avatar.
+     */
     const handleSave = async () => {
         if (loading) return;
         setLoading(true);
 
         try {
-            // Esta lógica está CORRETA.
-            // Ela falhava antes porque 'user.id' era '8' (inválido).
-            // Quando o AuthContext tiver o ID correto (ex: '6'), isto funcionará.
+            // Requisição PUT para atualizar o usuário
             const response = await axios.put(`${API_BASE_URL}/${user.id}`, {
                 nome: nome,
                 avatar_filename: selectedAvatar
@@ -67,6 +72,7 @@ export default function EditProfileScreen({ navigation }) {
                     />
 
                     <Text style={styles.label}>Escolha seu Avatar</Text>
+                    {/* Grid de Avatares (CSS Grid Intent) */}
                     <View style={styles.avatarGrid}>
                         {avatarList.map((avatar) => (
                             <TouchableOpacity
@@ -97,7 +103,7 @@ export default function EditProfileScreen({ navigation }) {
         </LinearGradient>
     );
 }
-// Estilos (O mesmo código que você enviou)
+
 const styles = StyleSheet.create({
     container: { flex: 1 },
     safeArea: { flex: 1 },

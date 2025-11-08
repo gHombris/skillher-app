@@ -1,5 +1,4 @@
 import React from 'react';
-// <<< CORRIGIDO: Text e LinearGradient importados >>>
 import { TouchableOpacity, StyleSheet, ActivityIndicator, View, Text } from 'react-native'; 
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -7,7 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { LinearGradient } from 'expo-linear-gradient'; // <<< ESTE IMPORT FALTAVA
+import { LinearGradient } from 'expo-linear-gradient'; 
 
 // Telas
 import WelcomeScreen from './screens/WelcomeScreen';
@@ -19,12 +18,16 @@ import RankingScreen from './screens/RankingScreen';
 import TrainingSelectionScreen from './screens/TrainingSelectionScreen';
 import TrainingPlayerScreen from './screens/TrainingPlayerScreen';
 
-const AuthStack = createStackNavigator();
-const AppTabs = createBottomTabNavigator();
-const TrainingStack = createStackNavigator();
-const ProfileStack = createStackNavigator(); 
+// Stacks de Navegação
+const AuthStack = createStackNavigator(); // Telas de login/registro
+const AppTabs = createBottomTabNavigator(); // Navegação principal (Tabs)
+const TrainingStack = createStackNavigator(); // Stack para o fluxo de Treino
+const ProfileStack = createStackNavigator(); // Stack para o fluxo de Perfil
 
-// --- NOSSOS NAVEGADORES ---
+/**
+ * @summary Stack Navigator para o fluxo de Treino.
+ * Permite navegar da Seleção de Treino para o Player de Treino.
+ */
 function TrainingNavigator() {
     return (
         <TrainingStack.Navigator screenOptions={{ headerShown: false }}>
@@ -34,6 +37,10 @@ function TrainingNavigator() {
     );
 }
 
+/**
+ * @summary Stack Navigator para o fluxo de Perfil.
+ * Permite navegar do Dashboard (Perfil) para a Edição de Perfil.
+ */
 function ProfileNavigator() {
     return (
         <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
@@ -43,10 +50,13 @@ function ProfileNavigator() {
     );
 }
 
-// CustomTabBar (Código original, sem mudanças)
+/**
+ * @summary Componente customizado da Barra de Abas (Tab Bar).
+ * Cria o botão central "TREINAR" destacado.
+ */
 function CustomTabBar({ state, descriptors, navigation }) {
     return (
-        <SafeAreaView edges={['bottom', 'left', 'right']} style={{ backgroundColor: 'rgba(30, 0, 50, 0.8)' }}>
+        <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.tabBarSafeArea}>
             <View style={styles.tabBarContainer}>
                 {state.routes.map((route, index) => {
                     const { options } = descriptors[route.key];
@@ -60,6 +70,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
                         }
                     };
 
+                    // Botão central "TREINAR"
                     if (route.name === 'Training') {
                         return (
                             <TouchableOpacity
@@ -72,6 +83,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
                         );
                     }
 
+                    // Botões normais (Perfil, Ranking)
                     return (
                         <TouchableOpacity
                             key={route.key}
@@ -89,7 +101,9 @@ function CustomTabBar({ state, descriptors, navigation }) {
     );
 }
 
-// <<< CORREÇÃO: Adicionados os 'tabBarLabel' que faltavam >>>
+/**
+ * @summary Navegador de Abas principal da aplicação (quando logado).
+ */
 function AppNavigator() {
     return (
         <AppTabs.Navigator
@@ -101,14 +115,14 @@ function AppNavigator() {
                 component={ProfileNavigator} 
                 options={{ tabBarLabel: 'Perfil' }} 
                 listeners={({ navigation }) => ({
+                    // Listener para corrigir o bug de navegação aninhada.
+                    // Garante que clicar na aba "Perfil" sempre volte ao perfil
+                    // do usuário logado, limpando o 'userId' de terceiros.
                     tabPress: (e) => {
                         e.preventDefault(); 
-                        
-                        // CORREÇÃO: Força o Stack do Perfil a voltar à tela inicial,
-                        // limpando o parâmetro 'userId' que carrega o perfil de terceiros.
                         navigation.navigate('Dashboard', { 
                             screen: 'ProfileDashboard',
-                            params: { userId: undefined }, // Garante que o Dashboard use o ID do usuário logado.
+                            params: { userId: undefined }, 
                         });
                     },
                 })}
@@ -127,10 +141,15 @@ function AppNavigator() {
     );
 }
 
-// --- LÓGICA DE NAVEGAÇÃO CORRIGIDA ---
+/**
+ * @summary Navegador Raiz (Root).
+ * Decide qual fluxo de navegação mostrar (Autenticação ou App)
+ * com base no estado 'isLoading' e 'user' do AuthContext.
+ */
 function RootNavigator() {
     const { user, isLoading } = useAuth(); // Pega o usuário e o estado de loading
 
+    // Tela de loading inicial enquanto o AuthContext verifica o storage
     if (isLoading) {
         return (
             <LinearGradient colors={['#00FFC2', '#4D008C']} style={styles.loadingContainer}>
@@ -142,7 +161,7 @@ function RootNavigator() {
     return (
         <AuthStack.Navigator screenOptions={{ headerShown: false }}>
             {user ? (
-                // 1. Usuário LOGADO: Mostra o app principal
+                // 1. Usuário LOGADO: Mostra o app principal (AppNavigator)
                 <AuthStack.Screen name="App" component={AppNavigator} />
             ) : (
                 // 2. Usuário DESLOGADO: Mostra as telas de autenticação
@@ -156,12 +175,14 @@ function RootNavigator() {
     );
 }
 
-
+/**
+ * @summary Componente principal.
+ * Envolve toda a aplicação no AuthProvider (Contexto) e NavigationContainer (Rotas).
+ */
 export default function App() {
     return (
         <SafeAreaProvider style={styles.root}>
             <AuthProvider>
-                {/* O NavigationContainer fica FORA e envolve o RootNavigator */}
                 <NavigationContainer>
                     <RootNavigator />
                 </NavigationContainer>
@@ -171,7 +192,7 @@ export default function App() {
     );
 }
 
-// --- ESTILOS ---
+// --- ESTILOS  ---
 const styles = StyleSheet.create({
     root: {
         flex: 1,
@@ -180,6 +201,9 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    tabBarSafeArea: {
+        backgroundColor: 'rgba(30, 0, 50, 0.8)',
     },
     tabBarContainer: {
         flexDirection: 'row',
@@ -202,7 +226,11 @@ const styles = StyleSheet.create({
         marginHorizontal: 5,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 5,
+        elevation: 5, // Sombra para Android
+        shadowColor: '#000', // Sombra para iOS
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
     },
     trainingButtonText: {
         color: 'black',

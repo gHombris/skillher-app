@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+// Estrutura de dados local para os treinos
 const categories = [
     { id: 'chute', title: 'Chute' },
     { id: 'drible', title: 'Drible' },
@@ -23,6 +24,11 @@ const exercises = {
     defesa: [],
 };
 
+/**
+ * @summary Tela de Seleção de Treinos.
+ * Permite ao usuário filtrar treinos por categoria (Chute, Drible, etc.)
+ * e selecionar um exercício para iniciar.
+ */
 export default function TrainingSelectionScreen({ navigation }) {
     const [selectedCategory, setSelectedCategory] = useState(categories[0].id);
 
@@ -33,7 +39,7 @@ export default function TrainingSelectionScreen({ navigation }) {
                     <Text style={styles.headerTitle}>Escolha seu Treino</Text>
                 </View>
 
-                {/* Seletor de Categorias Horizontal */}
+                {/* Seletor de Categorias Horizontal (CSS Grid/Flex Intent) */}
                 <View style={styles.categoryContainer}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         {categories.map(category => (
@@ -45,12 +51,20 @@ export default function TrainingSelectionScreen({ navigation }) {
                                 ]}
                                 onPress={() => setSelectedCategory(category.id)}
                             >
-                                <Text style={styles.categoryText}>{category.title}</Text>
+                                <Text 
+                                    style={[
+                                        styles.categoryText,
+                                        selectedCategory === category.id && styles.categoryTextActive
+                                    ]}
+                                >
+                                    {category.title}
+                                </Text>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
                 </View>
 
+                {/* Lista de Exercícios (Filtrada) */}
                 <FlatList
                     data={exercises[selectedCategory]}
                     keyExtractor={item => item.id}
@@ -78,16 +92,40 @@ export default function TrainingSelectionScreen({ navigation }) {
     );
 }
 
-// Os estilos permanecem os mesmos
+// Estilos (Restaurados para corrigir o layout)
 const styles = StyleSheet.create({
     header: { padding: 20, alignItems: 'center' },
     headerTitle: { color: 'white', fontSize: 26, fontWeight: 'bold' },
     categoryContainer: { paddingLeft: 20, marginBottom: 20, height: 50 },
-    categoryButton: { backgroundColor: 'rgba(30, 0, 50, 0.6)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, marginRight: 10, justifyContent: 'center' },
-    categoryButtonActive: { backgroundColor: '#00FFC2' },
-    categoryText: { color: 'white', fontWeight: 'bold' },
+    categoryButton: { 
+        backgroundColor: 'rgba(30, 0, 50, 0.6)', 
+        paddingHorizontal: 20, 
+        paddingVertical: 10, 
+        borderRadius: 20, 
+        marginRight: 10, 
+        justifyContent: 'center',
+        height: 40, // Altura fixa para alinhar
+    },
+    categoryButtonActive: { 
+        backgroundColor: '#00FFC2' 
+    },
+    categoryText: { 
+        color: 'white', 
+        fontWeight: 'bold' 
+    },
+    categoryTextActive: {
+        color: 'black'
+    },
     exerciseList: { paddingHorizontal: 20 },
-    exerciseCard: { backgroundColor: 'rgba(30, 0, 50, 0.6)', borderRadius: 15, padding: 20, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    exerciseCard: { 
+        backgroundColor: 'rgba(30, 0, 50, 0.6)', 
+        borderRadius: 15, 
+        padding: 20, 
+        marginBottom: 15, 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center' 
+    },
     exerciseTitle: { color: 'white', fontSize: 18, fontWeight: 'bold' },
     exerciseDifficulty: { color: '#00FFC2', fontSize: 14, marginTop: 5 },
     playIcon: { color: 'white', fontSize: 24 },

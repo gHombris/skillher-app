@@ -5,8 +5,12 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext'; 
 
 const logoImage = require('../assets/Skill.png'); 
-const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // <<< MOCKAPI
+const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // MOCKAPI
 
+/**
+ * @summary Tela de Registro.
+ * Permite que novos usuários criem uma conta.
+ */
 export default function RegisterScreen({ navigation }) {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -15,6 +19,11 @@ export default function RegisterScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
+  /**
+   * @summary Processa a tentativa de registro.
+   * Valida os campos (incluindo confirmação de senha) e faz um POST para o MockAPI
+   * com dados padrão (Rank 'Ferro', xp 10, etc.)
+   */
   const handleRegister = async () => {
     if (loading) return;
     setLoading(true);
@@ -31,12 +40,12 @@ export default function RegisterScreen({ navigation }) {
     }
 
     try {
-      // LÓGICA MUDADA (POST direto para /jogadora com dados padrão)
+      // POST para /jogadora com dados padrão
       const response = await axios.post(API_BASE_URL, {
         nome: nome,
         email: email,
-        password_hash: password, // O MockAPI vai salvar a senha como texto
-        // Valores padrão (para bater com o schema)
+        password_hash: password, // MockAPI salva a senha como texto
+        // Valores padrão
         xp: 10,
         rank: 'Ferro',
         treinos_concluidos: 0,
@@ -44,7 +53,6 @@ export default function RegisterScreen({ navigation }) {
         avatar_filename: 'ana.png' // Avatar padrão
       });
 
-      console.log("Registro (MockAPI) bem-sucedido:", response.data);
       login(response.data);
       navigation.navigate('App');
 
@@ -66,7 +74,7 @@ export default function RegisterScreen({ navigation }) {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.backButton}>←</Text>
           </TouchableOpacity>
-          <Image source={logoImage} style={styles.logo} />
+          <Image source={logoImage} style={styles.logo} resizeMode="contain" />
         </View>
         
         <Text style={styles.title}>Crie sua conta</Text>
@@ -133,9 +141,6 @@ const styles = StyleSheet.create({
     input: { backgroundColor: 'rgba(255, 255, 255, 0.2)', color: 'white', padding: 15, borderRadius: 10, fontSize: 16, marginBottom: 15 },
     primaryButton: { backgroundColor: '#00FFC2', paddingVertical: 15, borderRadius: 30, alignItems: 'center', marginVertical: 10 },
     primaryButtonText: { color: '#000', fontSize: 18, fontWeight: 'bold' },
-    separatorText: { color: 'white', textAlign: 'center', marginVertical: 15 },
-    secondaryButton: { backgroundColor: 'white', paddingVertical: 15, borderRadius: 30, alignItems: 'center' },
-    secondaryButtonText: { color: '#333', fontSize: 18, fontWeight: 'bold' },
     footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
     footerText: { color: 'white', fontSize: 16 },
     linkText: { color: '#00FFC2', fontSize: 16, fontWeight: 'bold' }

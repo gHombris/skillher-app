@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Button, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Alert, ScrollView } from 'react-native'; // Adicionado ScrollView
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
 import XPFeedbackModal from '../components/XPFeedbackModal';
@@ -8,11 +8,12 @@ import { useAuth } from '../context/AuthContext';
 
 const API_BASE_URL = 'https://690d3068a6d92d83e850b9ff.mockapi.io/jogadora'; // API Mockada
 
-// <<< NOVO: MAPA CANÔNICO E ORDEM DE RANKS PARA CONSISTÊNCIA >>>
+// =========================================================================
+// Lógica de Gamificação (Promoção, Sequência, Conquistas)
+// =========================================================================
 const RANK_ORDER = [
     'Ferro', 'Bronze', 'Prata', 'Ouro', 'Rubi', 'Ametista', 'Safira', 'Diamante'
 ];
-
 const RANK_XP_MAP = {
     'Ferro': { proximo: 50, anterior: 0 },
     'Bronze': { proximo: 100, anterior: 50 },
@@ -25,21 +26,24 @@ const RANK_XP_MAP = {
 };
 const CONQUISTAS_MAP = {
     'treino_1': { icon: 'star', color: '#FFD700', titulo: 'Primeiro Treino' },
-    'treino_10': { icon: 'trophy', color: '#FFD700', titulo: '10 Treinos Concluídos' },
     'sequencia_3': { icon: 'fire', color: '#FF4500', titulo: '3 Dias de Foco' },
     'sequencia_7': { icon: 'certificate', color: '#FF4500', titulo: 'Sequência Semanal' },
     'rank_up_1': { icon: 'level-up', color: '#00FFC2', titulo: 'Primeira Promoção' },
     'rank_up_3': { icon: 'rocket', color: '#00FFC2', titulo: 'Impulso na Carreira' },
-    'rank_top_3': { icon: 'medal', color: '#C0C0C0', titulo: 'Top 3 Semanal' },
 };
 
-// <<< ATUALIZADO: Lógica de checagem de Ranks, Conquistas e Sequência >>>
+/**
+ * @summary Calcula o novo estado da jogadora após um treino.
+ * Verifica XP, Promoção de Rank, Sequência e Conquistas.
+ * @param {object} currentUser - O objeto do usuário antes do treino.
+ * @param {number} xpGanhos - XP ganho nesta sessão.
+ * @param {string} lastTrainingDate - Data (string) do último treino (do AuthContext).
+ * @returns {object} O novo estado atualizado do usuário.
+ */
 const checkProgresso = (currentUser, xpGanhos, lastTrainingDate) => {
     const novoXp = (currentUser.xp || 0) + xpGanhos;
     const novosTreinos = (currentUser.treinos_concluidos || 0) + 1;
     let novoRank = currentUser.rank;
-    
-    const previousRank = currentUser.rank; 
     let isRankUp = false;
     
     const currentRankKey = RANK_ORDER.includes(currentUser.rank) ? currentUser.rank : 'Ferro';
@@ -53,15 +57,15 @@ const checkProgresso = (currentUser, xpGanhos, lastTrainingDate) => {
         Alert.alert("PARABÉNS!", `Você foi promovida para o Rank ${novoRank}!`);
     }
 
-    // 2. Lógica de Sequência Diária e Treino Concluído
+    // 2. Lógica de Sequência Diária (Streak)
     let novaSequencia = currentUser.sequencia || 0;
     const today = new Date().toDateString();
     
     if (lastTrainingDate !== today) {
-        novaSequencia++;
+        novaSequencia++; // Incrementa a sequência se o último treino não foi hoje
     }
 
-    // 3. Checa Conquistas (ATUALIZADO SEM as conquistas removidas)
+    // 3. Checa Conquistas
     let conquistas = Array.isArray(currentUser.conquistas) ? [...currentUser.conquistas] : [];
     
     const checkAndAddConquista = (key, title) => {
@@ -71,21 +75,13 @@ const checkProgresso = (currentUser, xpGanhos, lastTrainingDate) => {
         }
     }
     
-    // Conquistas de Treino
     if (novosTreinos >= 1) checkAndAddConquista('treino_1', "Primeiro Treino Concluído!");
-    // if (novosTreinos >= 10) checkAndAddConquista('treino_10', "10 Treinos Concluídos! Continue assim!"); // REMOVIDO
-    
-    // Conquistas de Sequência
-    if (novaSequencia >= 3) checkAndAddConquista('sequencia_3', "3 Dias de Foco: Não perca o ritmo!");
-    if (novaSequencia >= 7) checkAndAddConquista('sequencia_7', "Sequência Semanal: Sua consistência é um diferencial!");
-    // if (novaSequencia >= 10) checkAndAddConquista('sequencia_10', "10 Dias de Fogo: Você está pegando fogo!"); // REMOVIDO
-
-    // Conquistas de Rank 
+    if (novaSequencia >= 3) checkAndAddConquista('sequencia_3', "3 Dias de Foco!");
+    if (novaSequencia >= 7) checkAndAddConquista('sequencia_7', "Sequência Semanal!");
     if (isRankUp) {
         checkAndAddConquista('rank_up_1', `Primeira Promoção: Bem-vinda ao Rank ${novoRank}!`);
-        const newRankIndex = RANK_ORDER.indexOf(novoRank);
-        if (newRankIndex >= RANK_ORDER.indexOf('Prata')) { 
-            checkAndAddConquista('rank_up_3', "Impulso na Carreira: Você está subindo rápido!");
+        if (RANK_ORDER.indexOf(novoRank) >= RANK_ORDER.indexOf('Prata')) { 
+            checkAndAddConquista('rank_up_3', "Impulso na Carreira!");
         }
     }
 
@@ -98,69 +94,80 @@ const checkProgresso = (currentUser, xpGanhos, lastTrainingDate) => {
     };
 };
 
-
+/**
+ * @summary Formata segundos (número) para uma string "MM:SS".
+ */
 const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
+/**
+ * @summary Tela do Player de Treino.
+ * Exibe o vídeo do exercício, um cronômetro, e salva o progresso ao concluir.
+ */
 export default function TrainingPlayerScreen({ route, navigation }) {
-    const { exercise } = route.params;
+    const { exercise } = route.params; // Recebe o exercício selecionado
     const videoRef = useRef(null); 
-    const [seconds, setSeconds] = useState(0);
-    const [isModalVisible, setModalVisible] = useState(false);
+    const [seconds, setSeconds] = useState(0); // Estado do cronômetro
+    const [isModalVisible, setModalVisible] = useState(false); // Visibilidade do modal de XP
     const intervalRef = useRef(null);
     const { user, login, updateStreak, getLastTrainingDate } = useAuth();
 
+    // Inicia o cronômetro quando a tela é montada
     useEffect(() => {
         intervalRef.current = setInterval(() => {
             setSeconds(prevSeconds => prevSeconds + 1);
         }, 1000);
+        // Limpa o intervalo ao desmontar a tela (sair)
         return () => clearInterval(intervalRef.current);
     }, []);
 
+    /**
+     * @summary Chamado ao clicar em "Marcar como Concluído".
+     * Para o cronômetro e exibe o modal de feedback.
+     */
     const handleCompleteTraining = () => {
         clearInterval(intervalRef.current);
         setModalVisible(true);
     };
 
+    /**
+     * @summary Chamado ao fechar o modal de feedback.
+     * Calcula o progresso (checkProgresso), salva na API (PUT)
+     * e atualiza o AuthContext (login, updateStreak).
+     */
     const handleCloseModal = async () => {
         setModalVisible(false);
-        const xpGanhos = 10; 
+        const xpGanhos = 10; // XP fixo por treino
 
         if (!user) {
-            console.error("Usuário não logado, não é possível salvar o progresso.");
             navigation.goBack();
             return;
         }
 
         try {
-            // 2. PEGAR A ÚLTIMA DATA DE TREINO
             const lastTrainingDate = getLastTrainingDate();
-            
-            // 3. CALCULAR O PROGRESSO
             const progressoAtualizado = checkProgresso(user, xpGanhos, lastTrainingDate);
 
-            // 4. Envia os dados atualizados para o MockAPI
+            // Envia os dados atualizados para o MockAPI
             const response = await axios.put(`${API_BASE_URL}/${user.id}`, progressoAtualizado);
             
-            // 5. Atualiza o usuário no contexto global
+            // Atualiza o usuário no contexto global
             login(response.data);
             
-            // 6. SALVA A DATA DE HOJE NO LOCALSTORAGE
+            // Salva a data de hoje no storage (se for o primeiro treino do dia)
             if (lastTrainingDate !== new Date().toDateString()) {
                 updateStreak();
             }
             
-            console.log("Progresso salvo (MockAPI):", response.data);
-
         } catch (error) {
             console.error("Erro ao salvar progresso (MockAPI):", error);
             Alert.alert("Erro", "Não foi possível salvar seu progresso.");
         }
         
-        navigation.goBack();
+        navigation.goBack(); // Volta para a tela de seleção
     };
 
     return (
@@ -172,10 +179,12 @@ export default function TrainingPlayerScreen({ route, navigation }) {
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.content}>
+                {/* CORREÇÃO: Adicionado ScrollView para telas menores */}
+                <ScrollView contentContainerStyle={styles.scrollContent}>
                     <Text style={styles.title}>{exercise.title}</Text>
                     <Text style={styles.difficulty}>{exercise.difficulty}</Text>
 
+                    {/* CORREÇÃO: Vídeo agora usa 'aspectRatio' para responsividade */}
                     <Video
                         ref={videoRef}
                         style={styles.video}
@@ -194,8 +203,9 @@ export default function TrainingPlayerScreen({ route, navigation }) {
                     >
                         <Text style={styles.completeButtonText}>Marcar como Concluído</Text>
                     </TouchableOpacity>
-                </View>
+                </ScrollView>
 
+                {/* Modal de Feedback (reutilizável) */}
                 <XPFeedbackModal
                     visible={isModalVisible}
                     onClose={handleCloseModal}
@@ -207,19 +217,22 @@ export default function TrainingPlayerScreen({ route, navigation }) {
     );
 }
 
-// Estilos (idênticos ao que você mandou)
+
 const styles = StyleSheet.create({
+    header: { padding: 20, paddingBottom: 0 }, 
+    backButton: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+    scrollContent: { 
+        paddingHorizontal: 20, 
+        paddingBottom: 40, 
+    },
+    title: { color: 'white', fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 5 },
+    difficulty: { color: '#00FFC2', fontSize: 16, textAlign: 'center', marginBottom: 20 },
     video: {
         width: '100%',
-        height: 220, 
+        aspectRatio: 16 / 9, 
         borderRadius: 15,
         backgroundColor: 'black', 
     },
-    header: { padding: 20 },
-    backButton: { color: 'white', fontSize: 18, fontWeight: 'bold' },
-    content: { flex: 1, paddingHorizontal: 20 },
-    title: { color: 'white', fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 5 },
-    difficulty: { color: '#00FFC2', fontSize: 16, textAlign: 'center', marginBottom: 20 },
     timerContainer: {
         alignItems: 'center',
         marginVertical: 20,
